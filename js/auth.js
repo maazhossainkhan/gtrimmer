@@ -7,6 +7,9 @@
   const requestAccessButton = document.getElementById("requestAccessButton");
   const signOutButton = document.getElementById("signOutButton");
   const authFeedback = document.getElementById("authFeedback");
+  const channelGate = document.getElementById("channelGate");
+  const verifyChannelButton = document.getElementById("verifyChannelButton");
+  const channelFeedback = document.getElementById("channelFeedback");
   const identityChip = document.getElementById("identityChip");
   const identityText = document.getElementById("identityText");
   const adminPanel = document.getElementById("adminPanel");
@@ -42,6 +45,7 @@
     setupNotice.hidden = true;
     authGate.hidden = false;
     appShell.hidden = true;
+    channelGate.hidden = true;
     signOutButton.hidden = !client || !currentUser;
     setAuthFeedback(message, type || "");
     requestAccessButton.hidden = true;
@@ -200,6 +204,7 @@
       currentAccess = { authorized: false, isAdmin: false };
       setIdentity(null);
       adminPanel.hidden = true;
+      channelGate.hidden = true;
       setGate("Sign in with Telegram to request access. The administrator will approve your verified Telegram account.", "");
       signOutButton.hidden = true;
       finishReady(currentAccess);
@@ -219,6 +224,7 @@
         userId: user.id
       };
       if (data.state === "active" || data.state === "admin") {
+        channelGate.hidden = true;
         authGate.hidden = true;
         setupNotice.hidden = true;
         appShell.hidden = false;
@@ -229,9 +235,14 @@
         appShell.hidden = true;
         authGate.hidden = false;
         setupNotice.hidden = true;
-        signInButton.hidden = false;
+        signInButton.hidden = true;
+        channelGate.hidden = data.state !== "channel_required";
         requestAccessButton.hidden = !(data.state === "needs_request" || data.state === "rejected");
-        if (data.state === "pending") {
+        if (data.state === "channel_required") {
+          setAuthFeedback("One more step: join our Telegram channel and verify membership to continue.", "");
+          channelFeedback.textContent = "";
+          channelFeedback.className = "channel-feedback";
+        } else if (data.state === "pending") {
           setAuthFeedback("Your request is pending. The administrator will review " + usernameLabel(currentUser) + ".", "");
         } else if (data.state === "revoked") {
           setAuthFeedback("Access for " + usernameLabel(currentUser) + " has been revoked. Contact the administrator if this is a mistake.", "error");
@@ -265,6 +276,25 @@
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" }
     });
     signInButton.addEventListener("click", signInWithTelegram);
+
+    verifyChannelButton.addEventListener("click", async function () {
+      verifyChannelButton.disabled = true;
+      verifyChannelButton.textContent = "Checking membership…";
+      channelFeedback.textContent = "Checking your Telegram membership…";
+      channelFeedback.className = "channel-feedback";
+      try {
+        await setUserState();
+        if (!channelGate.hidden) {
+          channelFeedback.textContent = "Membership wasn't confirmed yet. Make sure you've joined @ThresholdSyndicate, then try again.";
+          channelFeedback.className = "channel-feedback is-error";
+        } else {
+          channelFeedback.textContent = "";
+        }
+      } finally {
+        verifyChannelButton.disabled = false;
+        verifyChannelButton.textContent = "I've joined — verify membership";
+      }
+    });
     requestAccessButton.addEventListener("click", async function () {
       requestAccessButton.disabled = true;
       requestAccessButton.textContent = "Submitting…";
