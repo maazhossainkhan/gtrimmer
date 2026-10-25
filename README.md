@@ -96,6 +96,12 @@ Open [GitHub Pages Settings](https://github.com/maazhossainkhan/gtrimmer/setting
 5. Each conversion requires a valid Supabase Auth JWT and a current active database row.
 6. Admins can revoke/restore non-admin users. Revocation blocks the next conversion request.
 
+## 9. Mini App requests in the existing admin dashboard
+
+The OIDC Edge Function `telegram-auth` also serves the original browser-based admin dashboard. After the latest source is deployed to Supabase, its admin list merges legacy OIDC and Telegram Mini App requests. It can approve/reject Mini App request IDs with the `tg:<telegram_id>` action ID, and revoke/restore Mini App allowlist entries.
+
+If a user was made administrator only through `ADMIN_USER_IDS` (a Supabase UUID), that does not automatically identify the same Telegram account in the Mini App. To grant Mini App administrator status, set `ADMIN_TELEGRAM_IDS` to the verified numeric Telegram user ID. It is shown beside the pending request after the updated `telegram-auth` function is deployed, or can be read from `gtrimmer_mini_access_requests.telegram_id` in SQL Editor. Never use the username for this mapping.
+
 ## 8. Telegram Mini App authentication and access approvals
 
 When opened inside Telegram, the frontend now uses `Telegram.WebApp.initData` instead of launching the OIDC page inside Telegram's webview. The new `telegram-mini-auth` Edge Function verifies Telegram's HMAC signature and `auth_date` on the server before processing any action. `initDataUnsafe` is not used for authorization.
