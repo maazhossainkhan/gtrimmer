@@ -16,6 +16,8 @@
   const activeUsersList = document.getElementById("activeUsersList");
   const pendingCount = document.getElementById("pendingCount");
   const authorizedCount = document.getElementById("authorizedCount");
+  const pendingAccessDropdown = document.getElementById("pendingAccessDropdown");
+  const authorizedAccessDropdown = document.getElementById("authorizedAccessDropdown");
   let client = null;
   let currentUser = null;
   let currentAccess = { authorized: false, isAdmin: false };
@@ -153,6 +155,11 @@
       activeUsersList.replaceChildren();
       pendingCount.textContent = String(requests.length);
       authorizedCount.textContent = String(users.filter(user => user.status === "active").length);
+      // Keep the panel compact; automatically expose pending items that need attention.
+      if (pendingAccessDropdown) pendingAccessDropdown.open = requests.length > 0;
+      if (authorizedAccessDropdown && !authorizedAccessDropdown.dataset.userToggled) {
+        authorizedAccessDropdown.open = false;
+      }
       if (!requests.length) {
         pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No pending requests." }));
       }
@@ -297,6 +304,17 @@
       finishReady(currentAccess);
     }
   }
+  if (authorizedAccessDropdown) {
+    authorizedAccessDropdown.addEventListener("toggle", function () {
+      authorizedAccessDropdown.dataset.userToggled = "true";
+    });
+  }
+  if (pendingAccessDropdown) {
+    pendingAccessDropdown.addEventListener("toggle", function () {
+      pendingAccessDropdown.dataset.userToggled = "true";
+    });
+  }
+
   async function initializeMiniApp() {
     miniAppMode = true;
     const telegram = window.Telegram && window.Telegram.WebApp;
