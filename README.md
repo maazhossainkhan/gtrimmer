@@ -96,6 +96,20 @@ Open [GitHub Pages Settings](https://github.com/maazhossainkhan/gtrimmer/setting
 5. Each conversion requires a valid Supabase Auth JWT and a current active database row.
 6. Admins can revoke/restore non-admin users. Revocation blocks the next conversion request.
 
+## 7. Telegram Mini App (@gtrimmerbot)
+
+The website can open inside Telegram as a Mini App. The bot sends an **Open Google Trim** button to https://turlx.com; the existing Telegram OIDC sign-in and server-side approval flow remain the source of access decisions. Opening the Mini App does **not** grant converter access by itself.
+
+1. In Supabase Edge Function secrets, set `TELEGRAM_BOT_TOKEN` (from @BotFather) and `TELEGRAM_WEBHOOK_SECRET` (a random 32–64 character secret using letters, numbers, `_`, or `-`). Keep both server-side only.
+2. Deploy `supabase/functions/telegram-bot/index.ts` as a function named `telegram-bot`. This webhook has `verify_jwt = false` because Telegram does not send Supabase JWTs; the function checks Telegram's `X-Telegram-Bot-Api-Secret-Token` header.
+3. Register the webhook once using this URL after replacing the placeholders (do not share the URL or token):
+   `https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://uujilkamhixduorkflup.supabase.co/functions/v1/telegram-bot&secret_token=<TELEGRAM_WEBHOOK_SECRET>`
+   Telegram should return `ok: true` and `result: true`.
+4. In Telegram, send `/start` to [@gtrimmerbot](https://t.me/gtrimmerbot). It should reply with an **Open Google Trim** Mini App button. Optionally configure BotFather's menu button to open `https://turlx.com`.
+5. Test both an approved and an unapproved Telegram account. An unapproved account must still see the request-access screen; only admin approval enables conversion.
+
+The Mini App bootstrap calls `Telegram.WebApp.ready()` and `expand()` when available. Telegram client data is not treated as authentication; do not trust `initDataUnsafe` for authorization. Existing access checks still validate the Supabase Auth session and database approval on every conversion.
+
 ## Files
 
 - `index.html` — login gate, converter, and admin dashboard UI
