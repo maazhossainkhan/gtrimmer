@@ -254,6 +254,13 @@ async function adminAction(identity: Identity, body: Record<string, unknown>) {
       reviewed_at: new Date().toISOString(), reviewed_by: null
     }).eq("user_id", targetId);
     if (error) throw new HttpError("Could not update the request status.", 500);
+    if (request.telegram_id) {
+      const { error: miniRequestError } = await db!.from("gtrimmer_mini_access_requests").update({
+        status: action === "approve" ? "approved" : "rejected",
+        reviewed_at: new Date().toISOString(), reviewed_by_telegram_id: identity.telegram_id
+      }).eq("telegram_id", String(request.telegram_id)).eq("status", "pending");
+      if (miniRequestError) throw new HttpError("The legacy request was updated, but its matching Mini App request could not be synchronized.", 500);
+    }
     return { success: true, message: action === "approve" ? "Account approved." : "Request rejected." };
   }
   if (action === "revoke" || action === "restore") {
