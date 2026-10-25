@@ -3,9 +3,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_USER_IDS = new Set((Deno.env.get("ADMIN_USER_IDS") ?? "").split(",").map(v => v.trim().toLowerCase()).filter(Boolean));
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
-const REQUIRED_TELEGRAM_CHANNEL = "@ThresholdSyndicate";
-const TELEGRAM_CHANNEL_URL = "https://t.me/ThresholdSyndicate";
 const ALLOWED_ORIGINS = new Set(["https://turlx.com", "https://www.turlx.com", "http://localhost:8000", "http://127.0.0.1:8000"]);
 const db = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -82,40 +79,6 @@ async function bootstrapAdmin(identity: ReturnType<typeof identityFromUser>) {
   }).eq("user_id", identity.user_id).eq("status", "pending");
   if (requestError) throw new HttpError("Could not finalize administrator setup.", 500);
 }
-async function checkRequiredChannelMembership(telegramId: string | null) {
-  if (!TELEGRAM_BOT_TOKEN) {
-    throw new HttpError("Channel verification is not configured yet. Please contact the administrator.", 503);
-  }
-  const numericTelegramId = telegramId ? Number(telegramId) : NaN;
-  if (!Number.isSafeInteger(numericTelegramId) || numericTelegramId <= 0) {
-    throw new HttpError("Could not read your verified Telegram user ID. Please sign out and sign in again.", 403);
-  }
-  let response: Response;
-  try {
-    response = await fetch("https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/getChatMember", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: REQUIRED_TELEGRAM_CHANNEL, user_id: numericTelegramId })
-    });
-  } catch {
-    throw new HttpError("Telegram could not be reached to verify channel membership. Please try again.", 502);
-  }
-  let result: any;
-  try { result = await response.json(); } catch {
-    throw new HttpError("Telegram returned an unreadable membership response. Please try again.", 502);
-  }
-  if (!response.ok || result?.ok !== true || !result?.result) {
-    console.error("Telegram channel membership check failed:", result?.description ?? response.status);
-    throw new HttpError("Could not verify @ThresholdSyndicate membership. Please check the bot's channel admin access and try again.", 502);
-  }
-  const member = result.result;
-  const joined = member.status === "creator"
-    || member.status === "administrator"
-    || member.status === "member"
-    || (member.status === "restricted" && member.is_member === true);
-  return { joined, channel: REQUIRED_TELEGRAM_CHANNEL, join_url: TELEGRAM_CHANNEL_URL };
-}
-
 async function getAccessState(identity: ReturnType<typeof identityFromUser>) {
   requireDatabase();
   await bootstrapAdmin(identity);
@@ -129,42 +92,14 @@ async function getAccessState(identity: ReturnType<typeof identityFromUser>) {
       updated_at: new Date().toISOString()
     }).eq("user_id", identity.user_id);
     if (error) throw new HttpError("Could not refresh the Telegram profile.", 500);
-    // Keep admins able to administer access even if channel verification is unavailable.
-    if (account.status === "active" && account.is_admin) {
-      return {
-        state: "admin",
-        user: { user_id: account.user_id, telegram_id: identity.telegram_id, username: identity.username,
-          display_name: identity.display_name, is_admin: true, status: account.status }
-      };
-    }
-    if (account.status === "revoked") {
-      return {
-        state: "revoked",
-        user: { user_id: account.user_id, telegram_id: identity.telegram_id, username: identity.username,
-          display_name: identity.display_name, is_admin: !!account.is_admin, status: account.status }
-      };
-    }
-  }
-
-  const membership = await checkRequiredChannelMembership(identity.telegram_id);
-  if (!membership.joined) {
     return {
-      state: "channel_required",
-      channel: membership.channel,
-      join_url: membership.join_url,
-      user: { user_id: identity.user_id, telegram_id: identity.telegram_id, username: identity.username,
-        display_name: identity.display_name, is_admin: false, status: account?.status ?? "not_requested" }
+      state: account.status === "active" ? (account.is_admin ? "admin" : "active") : "revoked",
+      user: {
+        user_id: account.user_id, telegram_id: identity.telegram_id, username: identity.username,
+        display_name: identity.display_name, is_admin: !!account.is_admin, status: account.status
+      }
     };
   }
-
-  if (account) {
-    return {
-      state: "active",
-      user: { user_id: account.user_id, telegram_id: identity.telegram_id, username: identity.username,
-        display_name: identity.display_name, is_admin: false, status: account.status }
-    };
-  }
-
   const { data: request, error: requestError } = await db!.from("gtrimmer_access_requests")
     .select("status, requested_at").eq("user_id", identity.user_id).maybeSingle();
   if (requestError) throw new HttpError("Could not read request status: " + requestError.message, 500);
@@ -260,10 +195,6 @@ Deno.serve(async (req: Request) => {
     const action = String(body.action ?? "");
     if (action === "access-state") return respond(req, { success: true, ...(await getAccessState(identity)) });
     if (action === "request-access") {
-      const membership = await checkRequiredChannelMembership(identity.telegram_id);
-      if (!membership.joined) {
-        throw new HttpError("Join @ThresholdSyndicate and verify membership before requesting access.", 403);
-      }
       const { data: account, error: accountError } = await db!.from("gtrimmer_access_users")
         .select("status, is_admin").eq("user_id", identity.user_id).maybeSingle();
       if (accountError) throw new HttpError("Could not verify account status.", 500);
