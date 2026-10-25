@@ -63,7 +63,6 @@ async function verifyInitData(raw: string): Promise<Identity> {
   }
 
   params.delete("hash");
-  params.delete("signature");
   const dataCheckString = Array.from(params.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => key + "=" + value)
