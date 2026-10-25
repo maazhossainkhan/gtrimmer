@@ -37,9 +37,9 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
 function keyboard() {
   return {
     keyboard: [
-      [{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link" }],
-      [{ text: "🔐 My Access" }, { text: "📩 Request Access" }],
-      [{ text: "ℹ️ Help" }]
+      [{ text: "🚀 Open Google Trim", style: "primary", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link", style: "success" }],
+      [{ text: "🔐 My Access", style: "primary" }, { text: "📩 Request Access", style: "success" }],
+      [{ text: "ℹ️ Help", style: "primary" }]
     ],
     resize_keyboard: true,
     // Do not force the reply keyboard to stay open. Telegram's native keyboard
@@ -175,18 +175,18 @@ async function configureTelegramMenu(chatId: number) {
   // These convenience setup calls should not prevent /start from replying if Telegram rejects a menu setting.
   try {
     await telegramApi("setMyCommands", { commands: [
-      { command: "start", description: "Show bot menu" },
-      { command: "app", description: "Open Google Trim Mini App" },
-      { command: "convert", description: "Convert a share.google link" },
-      { command: "access", description: "Check your access status" },
-      { command: "request", description: "Request converter access" },
-      { command: "help", description: "How to use Google Trim" }
+      { command: "start", description: "🎨 Show bot menu" },
+      { command: "app", description: "🔵 Open Google Trim Mini App" },
+      { command: "convert", description: "🟢 Convert a share.google link" },
+      { command: "access", description: "🔐 Check your access status" },
+      { command: "request", description: "📩 Request converter access" },
+      { command: "help", description: "ℹ️ How to use Google Trim" }
     ] });
   } catch (error) { console.warn("Could not refresh bot commands:", error); }
   try {
     await telegramApi("setChatMenuButton", {
       chat_id: chatId,
-      menu_button: { type: "web_app", text: "Open Google Trim", web_app: { url: MINI_APP_URL } }
+      menu_button: { type: "web_app", text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }
     });
   } catch (error) { console.warn("Could not set per-chat Mini App menu button:", error); }
 }
@@ -204,7 +204,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
   }
   if (command === "/app" || text === "🚀 Open Google Trim") {
     await sendMessage(chatId, "Open the Mini App using the button below.", {
-      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }]] }
+      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", style: "primary", web_app: { url: MINI_APP_URL } }]] }
     });
     return;
   }
@@ -266,7 +266,16 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
       await sendMessage(chatId, "🔒 " + reason);
       return;
     }
-    await sendMessage(chatId, "✅ Converted link:\n\n" + converted.url + "\n\nTap the link above to open it, or copy it.", { reply_markup: keyboard() });
+    const linkButtons: Record<string, unknown>[] = [];
+    if (converted.url.length <= 256) {
+      linkButtons.push({ text: "📋 Copy converted link", style: "success", copy_text: { text: converted.url } });
+    }
+    linkButtons.push({ text: "🔵 Open converted link", style: "primary", url: converted.url });
+    await sendMessage(
+      chatId,
+      "✅ Converted link:\n\n" + converted.url + "\n\nUse the buttons below to copy or open the result.",
+      { reply_markup: { inline_keyboard: [linkButtons] } }
+    );
     return;
   }
   await sendMessage(chatId, "I didn't recognize that command or link.\n\nTap 🔗 Convert Link, then send a valid share.google URL, or type /help.");
