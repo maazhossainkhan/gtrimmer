@@ -1,9 +1,10 @@
 /*
  * Browser-safe Supabase settings only.
- * Use the project's public publishable key (or legacy anon key).
- * NEVER put the Supabase service-role/secret key or Telegram Client Secret here.
+ * This publishable key is intended for browser use. Database access must still
+ * be protected by Row Level Security and server-side authorization.
+ * NEVER put a Supabase service-role/secret key or Telegram Client Secret here.
  */
 window.GTRIMMER_SUPABASE_CONFIG = {
-  supabaseUrl: "",
-  publishableKey: ""
+  supabaseUrl: "https://uujilkamhixduorkflup.supabase.co",
+  publishableKey: "sb_publishable_Hw_yNozDQGNtF39ySo7j4A_f1eZV_69"
 };
