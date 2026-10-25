@@ -161,17 +161,18 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
   const text = messageText.trim();
   const first = text.split(/\s+/)[0];
   const command = first.split("@")[0].toLowerCase();
-  if (command === "/start" || text === "🚀 Open Google Trim") {
+  if (command === "/start") {
     await configureTelegramMenu(chatId);
     await sendMessage(chatId,
       "Welcome to Google Trim by Shadow, " + displayName(telegramUser) + "!\n\n" +
       "Use the buttons below to open the Mini App, check your approval, request access, or convert a Google Share link right here in Telegram.\n\n" +
-      "To convert without opening the Mini App, tap “🔗 Convert Link” or simply paste a share.google URL in this chat.",
-      { reply_markup: keyboard() });
+      "To convert without opening the Mini App, tap “🔗 Convert Link” or simply paste a share.google URL in this chat.");
     return;
   }
   if (command === "/app" || text === "🚀 Open Google Trim") {
-    await sendMessage(chatId, "Tap **Open Google Trim** in the menu below to launch the Mini App.", { parse_mode: "Markdown" });
+    await sendMessage(chatId, "Open the Mini App using the button below.", {
+      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL }]] }
+    });
     return;
   }
   if (command === "/help" || text === "ℹ️ Help") {
@@ -195,7 +196,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
       rejected: "Rejected — your previous request was declined. You may request access again.",
       needs_request: "Not approved yet — use Request Access to send a request."
     };
-    await sendMessage(chatId, "🔐 **Your access status**\n\nAccount: " + displayName(telegramUser) + "\nStatus: " + statusText[access.state], { parse_mode: "Markdown" });
+    await sendMessage(chatId, "🔐 Your access status\n\nAccount: " + displayName(telegramUser) + "\nStatus: " + statusText[access.state]);
     return;
   }
   if (command === "/request" || command === "/requestaccess" || text === "📩 Request Access") {
@@ -218,7 +219,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
         "🔒 Converter access is required. Tap 📩 Request Access and wait for approval.");
       return;
     }
-    await sendMessage(chatId, "Send your **share.google URL** in your next message, or paste it directly in this chat whenever you want to convert.", { parse_mode: "Markdown" });
+    await sendMessage(chatId, "Send your share.google URL in your next message, or paste it directly in this chat whenever you want to convert.");
     return;
   }
 
@@ -232,7 +233,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
       await sendMessage(chatId, "🔒 " + reason);
       return;
     }
-    await sendMessage(chatId, "✅ **Converted link**\n\n" + converted.url + "\n\nTap the link above to open it, or copy it.", { parse_mode: "Markdown" });
+    await sendMessage(chatId, "✅ Converted link:\n\n" + converted.url + "\n\nTap the link above to open it, or copy it.");
     return;
   }
   await sendMessage(chatId, "I didn't recognize that command or link.\n\nTap 🔗 Convert Link, then send a valid share.google URL, or type /help.");
