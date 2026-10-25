@@ -64,7 +64,7 @@ async function verifyInitData(raw: string): Promise<Identity> {
 
   params.delete("hash");
   const dataCheckString = Array.from(params.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => a < b ? -1 : (a > b ? 1 : 0))
     .map(([key, value]) => key + "=" + value)
     .join("\n");
   // Telegram's Mini App algorithm: HMAC key "WebAppData", message = bot token.
@@ -263,10 +263,11 @@ async function adminAction(identity: Identity, body: Record<string, unknown>) {
     return { success: true, message: action === "approve" ? "Account approved." : "Request rejected." };
   }
   if (action === "revoke" || action === "restore") {
-    const { data: target, error: findError } = await db!.from("gtrimmer_access_users").select("user_id, is_admin").eq("user_id", targetId).maybeSingle();
+    const { data: target, error: findError } = await db!.from("gtrimmer_access_users").select("user_id, telegram_id, is_admin").eq("user_id", targetId).maybeSingle();
     if (findError) throw new HttpError("Could not read the selected account.", 500);
     if (!target) throw new HttpError("Account not found. Refresh the list.");
     if (target.is_admin) throw new HttpError("Administrator accounts cannot be changed here.", 403);
+    if (String(target.telegram_id ?? "") === identity.telegram_id) throw new HttpError("You cannot change your own access from this screen.", 403);
     const { error } = await db!.from("gtrimmer_access_users").update({
       status: action === "revoke" ? "revoked" : "active", updated_at: new Date().toISOString()
     }).eq("user_id", targetId);
