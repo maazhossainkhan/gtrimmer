@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b14">
-  <meta name="description" content="Google Trim by Shadow — a clean, privacy-minded Google Share URL converter styled for the Shadow Shortner design system.">
+  <meta name="description" content="Google Trim by Shadow — invite-only Google Share URL converter.">
   <title>Google Trim by Shadow — Share URL Converter</title>
   <link rel="stylesheet" href="css/styles.css">
-  <script src="js/converter.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js" defer></script>
+  <script src="js/auth.js" defer></script>
   <script src="js/app.js" defer></script>
 </head>
 <body>
@@ -17,19 +19,100 @@
         <span class="brand-mark" aria-hidden="true">S</span>
         <span class="brand-name">Google Trim <span>by Shadow</span></span>
       </a>
-      <div class="header-pill"><span class="header-pill-dot" aria-hidden="true"></span> Browser-only tool</div>
+      <div class="header-actions">
+        <div class="header-pill"><span class="header-pill-dot" aria-hidden="true"></span> Invite-only access</div>
+        <button class="signout-button" id="signOutButton" type="button" hidden>Sign out</button>
+      </div>
     </div>
   </header>
 
-  <main class="page-shell">
+  <section class="setup-notice" id="setupNotice" hidden aria-labelledby="setupTitle">
+    <div class="setup-icon" aria-hidden="true">⚙</div>
+    <div>
+      <h1 id="setupTitle">Authentication setup required</h1>
+      <p>Google Trim is secured by default. Add your Supabase project URL and publishable/anon key in <code>js/supabase-config.js</code>, then follow <a href="https://github.com/maazhossainkhan/gtrimmer#supabase-auth-setup" target="_blank" rel="noopener noreferrer">the setup guide</a>. Conversion stays disabled until authentication and server-side access checks are configured.</p>
+    </div>
+  </section>
+
+  <main class="auth-wrap" id="authGate" hidden>
+    <section class="auth-card" aria-labelledby="authTitle">
+      <div class="auth-symbol" aria-hidden="true">S</div>
+      <div class="eyebrow"><span class="eyebrow-star" aria-hidden="true">✦</span> Shadow link tools</div>
+      <h1 class="auth-title" id="authTitle">Private access.<span>Simple sharing.</span></h1>
+      <p class="auth-description">Google Trim by Shadow is available only to accounts approved through an administrator-generated invitation.</p>
+
+      <div class="invite-details" id="inviteDetails" hidden>
+        <div class="invite-label">Invitation detected</div>
+        <div class="invite-email" id="inviteEmail"></div>
+        <p class="invite-expiry" id="inviteExpiry"></p>
+      </div>
+
+      <div class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></div>
+      <button class="google-button" id="googleSignInButton" type="button">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.01 13.22l7.98 6.19C11.88 13.72 17.44 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.42 37.94 46.98 31.8 46.98 24.55Z"/><path fill="#FBBC05" d="M9.99 28.59A14.4 14.4 0 0 1 9.21 24c0-1.59.27-3.13.76-4.59l-7.98-6.2A23.91 23.91 0 0 0 0 24c0 3.86.92 7.5 2.54 10.78l7.45-6.19Z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.14 1.44-4.88 2.3-8.18 2.3-6.56 0-12.12-4.22-14.01-10.09l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>
+        <span>Continue with Google</span>
+        <span class="google-arrow" aria-hidden="true">→</span>
+      </button>
+      <p class="auth-smallprint">No public self-registration. A valid invitation and the matching Google account are required.</p>
+      <div class="auth-divider"><span></span><span>ACCESS CONTROL</span><span></span></div>
+      <div class="auth-footnote"><span aria-hidden="true">◈</span><span>Protected by Google sign-in, server-side authorization, and one-time invitations.</span></div>
+    </section>
+  </main>
+
+  <main class="page-shell" id="appShell" hidden>
+    <section class="admin-panel" id="adminPanel" hidden aria-labelledby="adminTitle">
+      <div class="admin-heading">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-star" aria-hidden="true">✦</span> Administrator</div>
+          <h2 id="adminTitle">Access management</h2>
+          <p>Create one-time invitation links and revoke access when needed.</p>
+        </div>
+        <button class="secondary-button" id="adminRefreshButton" type="button">Refresh list</button>
+      </div>
+      <form class="invite-form" id="adminInviteForm">
+        <div class="invite-field">
+          <label for="inviteEmailInput">Google account email</label>
+          <input id="inviteEmailInput" type="email" autocomplete="email" placeholder="person@example.com" required>
+        </div>
+        <div class="invite-field invite-expiry-field">
+          <label for="inviteExpiryInput">Link expires</label>
+          <select id="inviteExpiryInput">
+            <option value="24">24 hours</option>
+            <option value="168" selected>7 days</option>
+            <option value="720">30 days</option>
+          </select>
+        </div>
+        <button class="primary-button" id="createInviteButton" type="submit">Create invitation <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="admin-feedback" id="adminFeedback" role="status" aria-live="polite"></p>
+      <div class="invite-result" id="inviteResult" hidden>
+        <label for="inviteUrlOutput">Share this one-time invitation link</label>
+        <div class="invite-link-row">
+          <input id="inviteUrlOutput" type="text" readonly>
+          <button class="secondary-button" id="copyInviteButton" type="button">Copy link</button>
+        </div>
+        <p>The link is tied to the invited Google email, expires automatically, and can be redeemed once.</p>
+      </div>
+      <div class="admin-lists">
+        <section class="admin-list-section">
+          <div class="admin-list-heading"><h3>Authorized accounts</h3><span id="authorizedCount">0</span></div>
+          <div class="admin-list" id="authorizedUsersList"><p class="list-empty">Loading accounts…</p></div>
+        </section>
+        <section class="admin-list-section">
+          <div class="admin-list-heading"><h3>Invitations</h3><span id="invitationCount">0</span></div>
+          <div class="admin-list" id="invitationsList"><p class="list-empty">Loading invitations…</p></div>
+        </section>
+      </div>
+    </section>
+
     <section class="hero-grid" aria-labelledby="pageTitle">
       <div class="hero-copy">
         <div class="eyebrow"><span class="eyebrow-star" aria-hidden="true">✦</span> Shadow link tools</div>
         <h1 id="pageTitle">Make sharing links <span class="gradient">feel effortless.</span></h1>
-        <p class="hero-description">A focused tool to reformat a Google Share link in seconds. Paste your link, convert it, and copy the result—without sending your input to a server.</p>
+        <p class="hero-description">Reformat a Google Share link in seconds. Paste your link, convert it, and copy the result—all through an authorized session.</p>
         <div class="mini-benefits">
-          <span class="mini-benefit"><span class="check" aria-hidden="true">✓</span> Runs in your browser</span>
-          <span class="mini-benefit"><span class="check" aria-hidden="true">✓</span> No account needed</span>
+          <span class="mini-benefit"><span class="check" aria-hidden="true">✓</span> Google account sign-in</span>
+          <span class="mini-benefit"><span class="check" aria-hidden="true">✓</span> Invite-only access</span>
           <span class="mini-benefit"><span class="check" aria-hidden="true">✓</span> Mobile friendly</span>
         </div>
       </div>
@@ -42,10 +125,10 @@
               <span class="card-icon" aria-hidden="true">↗</span>
               <div>
                 <h2 class="card-title" id="toolTitle">Google Share Converter</h2>
-                <p class="card-subtitle">Transform a share.google URL format</p>
+                <p class="card-subtitle">Server-validated conversion</p>
               </div>
             </div>
-            <span class="card-state">Ready to use</span>
+            <span class="card-state">Access approved</span>
           </div>
 
           <form class="form-area" id="conversionForm" novalidate>
@@ -76,7 +159,7 @@
 
           <div class="privacy-note">
             <span class="privacy-icon" aria-hidden="true">◈</span>
-            <p>Your input is processed locally in this browser. This tool does not resolve the original destination or confirm that a converted link is valid.</p>
+            <p>Your share URL is sent to the authenticated conversion function to enforce access control. No analytics are included in this page.</p>
           </div>
           <div class="steps-strip" aria-label="Workflow"><span>Validate</span><span class="step-dot"></span><span>Convert</span><span class="step-dot"></span><span>Copy</span></div>
         </section>
@@ -86,15 +169,15 @@
     <section class="info-strip" aria-label="Tool details">
       <article class="info-item">
         <span class="info-icon" aria-hidden="true">⌁</span>
-        <div><h2 class="info-title">Simple workflow</h2><p class="info-copy">Paste a share.google link, convert the token, and copy the result in one place.</p></div>
+        <div><h2 class="info-title">Invite-only</h2><p class="info-copy">Only accounts invited by an administrator and matched to the invited Google email can gain access.</p></div>
       </article>
       <article class="info-item">
         <span class="info-icon" aria-hidden="true">◈</span>
-        <div><h2 class="info-title">Privacy minded</h2><p class="info-copy">No sign-in, analytics script, or server request is needed for conversion.</p></div>
+        <div><h2 class="info-title">Server checked</h2><p class="info-copy">Each conversion request checks the signed-in user and their current access status.</p></div>
       </article>
       <article class="info-item">
         <span class="info-icon" aria-hidden="true">↗</span>
-        <div><h2 class="info-title">Works on mobile</h2><p class="info-copy">Responsive spacing and touch-friendly controls for phone, tablet, and desktop.</p></div>
+        <div><h2 class="info-title">Access revocation</h2><p class="info-copy">The administrator can revoke a user from the access dashboard at any time.</p></div>
       </article>
     </section>
 
