@@ -1,6 +1,6 @@
 # Google Trim by Shadow
 
-A responsive Google Share URL-format converter using the Shadow Shortner-inspired navy/violet theme. The application is intended to be **invite-approved / admin-approved** and keeps the conversion endpoint behind server-side authorization.
+A responsive Google Share URL-format converter using the Shadow Shortner-inspired navy/violet theme. The application is intended to be **admin-approved** and keeps the conversion endpoint behind server-side authorization.
 
 ## Included
 
