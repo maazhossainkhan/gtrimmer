@@ -122,16 +122,85 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
   await requireAdmin(identity);
   const action = String(body.admin_action ?? "");
   if (action === "list") {
-    const [{ data: requests, error: requestError }, { data: users, error: usersError }] = await Promise.all([
+    const [{ data: legacyRequests, error: requestError }, { data: legacyUsers, error: usersError },
+      { data: miniRequests, error: miniRequestError }, { data: miniUsers, error: miniUsersError }] = await Promise.all([
       db!.from("gtrimmer_access_requests").select("user_id, telegram_id, username, display_name, status, requested_at")
         .eq("status", "pending").order("requested_at", { ascending: true }).limit(200),
       db!.from("gtrimmer_access_users").select("user_id, telegram_id, username, display_name, status, is_admin, created_at, updated_at")
+        .order("updated_at", { ascending: false }).limit(200),
+      db!.from("gtrimmer_mini_access_requests").select("telegram_id, username, display_name, status, requested_at")
+        .eq("status", "pending").order("requested_at", { ascending: true }).limit(200),
+      db!.from("gtrimmer_mini_access_users").select("telegram_id, username, display_name, status, is_admin, created_at, updated_at")
         .order("updated_at", { ascending: false }).limit(200)
     ]);
-    if (requestError || usersError) throw new HttpError("Could not load the access management list.", 500);
-    return { success: true, requests: requests ?? [], users: users ?? [] };
+    if (requestError || usersError || miniRequestError || miniUsersError) {
+      throw new HttpError("Could not load access lists. Confirm supabase/telegram-mini-app-schema.sql has been run.", 500);
+    }
+    const requests: any[] = (legacyRequests ?? []).map((row: any) => ({ ...row, source: "legacy" }));
+    const requestTelegramIds = new Set(requests.map((row: any) => String(row.telegram_id ?? "")).filter(Boolean));
+    for (const row of miniRequests ?? []) {
+      if (!requestTelegramIds.has(String(row.telegram_id))) {
+        requests.push({ ...row, user_id: "tg:" + row.telegram_id, source: "mini" });
+        requestTelegramIds.add(String(row.telegram_id));
+      }
+    }
+    const users: any[] = (legacyUsers ?? []).map((row: any) => ({ ...row, source: "legacy" }));
+    const userTelegramIds = new Set(users.map((row: any) => String(row.telegram_id ?? "")).filter(Boolean));
+    for (const row of miniUsers ?? []) {
+      if (!userTelegramIds.has(String(row.telegram_id))) {
+        users.push({ ...row, user_id: "tg:" + row.telegram_id, source: "mini" });
+        userTelegramIds.add(String(row.telegram_id));
+      }
+    }
+    return { success: true, requests, users };
   }
   const targetId = typeof body.user_id === "string" ? body.user_id.trim().toLowerCase() : "";
+  if (targetId.startsWith("tg:")) {
+    const targetTelegramId = targetId.slice(3);
+    if (!/^\d{1,20}$/.test(targetTelegramId)) throw new HttpError("A valid Telegram user ID is required.");
+    if (action === "approve" || action === "reject") {
+      const { data: request, error: requestError } = await db!.from("gtrimmer_mini_access_requests")
+        .select("telegram_id, username, display_name, status").eq("telegram_id", targetTelegramId).maybeSingle();
+      if (requestError) throw new HttpError("Could not load the Mini App access request.", 500);
+      if (!request || request.status !== "pending") throw new HttpError("This request is no longer pending. Refresh the list.");
+      if (action === "approve") {
+        const { error } = await db!.from("gtrimmer_mini_access_users").upsert({
+          telegram_id: targetTelegramId, username: request.username, display_name: request.display_name,
+          status: "active", is_admin: ADMIN_USER_IDS.has(identity.user_id.toLowerCase()), updated_at: new Date().toISOString()
+        }, { onConflict: "telegram_id" });
+        if (error) throw new HttpError("Could not approve this Telegram account.", 500);
+      }
+      const { error: updateError } = await db!.from("gtrimmer_mini_access_requests").update({
+        status: action === "approve" ? "approved" : "rejected",
+        reviewed_at: new Date().toISOString(), reviewed_by_telegram_id: identity.telegram_id
+      }).eq("telegram_id", targetTelegramId);
+      if (updateError) throw new HttpError("Could not update this Mini App request.", 500);
+      const { error: legacyError } = await db!.from("gtrimmer_access_requests").update({
+        status: action === "approve" ? "approved" : "rejected",
+        reviewed_at: new Date().toISOString(), reviewed_by: identity.user_id
+      }).eq("telegram_id", targetTelegramId).eq("status", "pending");
+      if (legacyError) throw new HttpError("The Mini App request was updated, but the legacy request could not be synchronized.", 500);
+      return { success: true, message: action === "approve" ? "Telegram account approved." : "Telegram request rejected." };
+    }
+    if (action === "revoke" || action === "restore") {
+      const { data: target, error: targetError } = await db!.from("gtrimmer_mini_access_users")
+        .select("telegram_id, is_admin").eq("telegram_id", targetTelegramId).maybeSingle();
+      if (targetError) throw new HttpError("Could not read this Telegram account.", 500);
+      if (!target) throw new HttpError("Telegram account not found. Refresh the list.");
+      if (target.is_admin || ADMIN_USER_IDS.has(identity.user_id.toLowerCase()) && targetTelegramId === identity.telegram_id) {
+        throw new HttpError("Administrator accounts cannot be changed here.", 403);
+      }
+      const status = action === "revoke" ? "revoked" : "active";
+      const { error: miniUpdateError } = await db!.from("gtrimmer_mini_access_users")
+        .update({ status, updated_at: new Date().toISOString() }).eq("telegram_id", targetTelegramId);
+      if (miniUpdateError) throw new HttpError("Could not update Mini App access.", 500);
+      const { error: legacyUpdateError } = await db!.from("gtrimmer_access_users")
+        .update({ status, updated_at: new Date().toISOString() }).eq("telegram_id", targetTelegramId).eq("is_admin", false);
+      if (legacyUpdateError) throw new HttpError("Mini App access changed, but the matching legacy access row could not be updated.", 500);
+      return { success: true, message: action === "revoke" ? "Access revoked." : "Access restored." };
+    }
+    throw new HttpError("Unknown administrator action.");
+  }
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId)) {
     throw new HttpError("A valid user ID is required.");
   }
