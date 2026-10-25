@@ -176,6 +176,10 @@ input[type="url"]::placeholder { color: #656b82; opacity: 1; }
 .admin-dropdown > summary:focus-visible { outline: 2px solid rgba(169,144,255,.75); outline-offset: 4px; border-radius: 5px; }
 .admin-dropdown > summary:hover h3 { color: #f0eaff; }
 .admin-dropdown .admin-count { flex-shrink: 0; }
+.revoked-list-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 10px; }
+.revoked-list-note { color: #858ba4; font-size: 10px; line-height: 1.5; }
+.revoked-list-actions .danger-small-button:disabled { opacity: .42; cursor: not-allowed; }
+@media (max-width: 540px) { .revoked-list-actions { align-items: flex-start; } .revoked-list-note { max-width: 230px; } }
 .admin-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 2px 0; cursor: pointer; list-style: none; }
 .admin-list-heading::-webkit-details-marker { display: none; }
 .admin-list-heading::marker { content: ""; }
