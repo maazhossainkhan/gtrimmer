@@ -195,7 +195,18 @@
       if (result.error) throw result.error;
     }
     const user = currentSession && currentSession.user ? currentSession.user : null;
-    currentUser = user ? { user_id: user.id } : null;
+    // Keep the existing authorized view stable during normal Supabase token/session refreshes.
+    const wasAuthorizedView = !!(
+      user &&
+      !appShell.hidden &&
+      currentAccess.authorized &&
+      currentAccess.userId === user.id
+    );
+    if (!user) {
+      currentUser = null;
+    } else if (!currentUser || currentUser.user_id !== user.id) {
+      currentUser = { user_id: user.id };
+    }
     if (!user) {
       currentAccess = { authorized: false, isAdmin: false };
       setIdentity(null);
@@ -205,7 +216,11 @@
       finishReady(currentAccess);
       return;
     }
-    setGate("Verifying your signed-in Telegram account…", "");
+    // Show the verification gate only on initial sign-in or when switching users.
+    // A routine TOKEN_REFRESHED / auth-state event must not hide the live dashboard.
+    if (!wasAuthorizedView) {
+      setGate("Verifying your signed-in Telegram account…", "");
+    }
     signOutButton.hidden = false;
     try {
       const data = await invokeServer("access-state", {});
@@ -244,6 +259,15 @@
       finishReady(currentAccess);
     } catch (error) {
       if (sequence !== refreshSequence) return;
+      // Preserve a previously authorized dashboard through temporary network/server errors.
+      // The protected Edge Function still checks current authorization for every conversion.
+      if (wasAuthorizedView) {
+        if (currentAccess.isAdmin) {
+          setAdminFeedback("Could not refresh access status: " + error.message, "error");
+        }
+        finishReady(currentAccess);
+        return;
+      }
       currentAccess = { authorized: false, isAdmin: false };
       setIdentity(currentUser);
       setGate("Could not verify access with the server: " + error.message, "error");
