@@ -6,6 +6,24 @@
   <meta name="theme-color" content="#090b14">
   <meta name="description" content="Google Trim by Shadow — admin-approved Google Share URL converter.">
   <title>Google Trim by Shadow — Share URL Converter</title>
+  <script>
+    // Fail visibly instead of leaving the page blank if a critical frontend script fails.
+    window.addEventListener("error", function (event) {
+      const file = event.filename || (event.target && event.target.src) || "";
+      if (!/auth\\.js|supabase-config\\.js|supabase-js|telegram-web-app/i.test(file)) return;
+      const gate = document.getElementById("authGate");
+      const notice = document.getElementById("setupNotice");
+      if (gate) {
+        gate.hidden = false;
+        const feedback = document.getElementById("authFeedback");
+        if (feedback) {
+          feedback.textContent = "A required script failed to load. Please refresh the page; if it continues, contact the administrator.";
+          feedback.className = "auth-feedback is-error";
+        }
+      }
+      if (notice) notice.hidden = true;
+    }, true);
+  </script>
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://telegram.org/js/telegram-web-app.js?64"></script>
   <script src="js/telegram-mini-app.js" defer></script>
