@@ -185,7 +185,7 @@ function convertUrl(rawValue: unknown) {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
+  if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders(req) });
   if (req.method !== "POST") return respond(req, { success: false, message: "Method not allowed." }, 405);
   try {
     requireDatabase();
