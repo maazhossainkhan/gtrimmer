@@ -171,7 +171,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
   }
   if (command === "/app" || text === "🚀 Open Google Trim") {
     await sendMessage(chatId, "Open the Mini App using the button below.", {
-      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL }]] }
+      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }]] }
     });
     return;
   }
