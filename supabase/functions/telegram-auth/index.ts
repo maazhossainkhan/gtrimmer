@@ -294,7 +294,7 @@ Deno.serve(async (req: Request) => {
     requireConfiguration();
     let body: Record<string, unknown>;
     try { body = await req.json(); } catch { throw new HttpError("Request body must be valid JSON."); }
-    const action = String(body.action ?? "");
+    const action = String(body.endpoint_action ?? body.action ?? "");
 
     if (action === "exchange-code") {
       requireTelegramConfiguration();
@@ -325,7 +325,7 @@ Deno.serve(async (req: Request) => {
         throw new HttpError("Telegram could not exchange this sign-in code. Start the login again.", 401);
       }
       const verified = await verifyTelegramIdToken(tokenData.id_token, nonce);
-      const { exp } = await jwtVerify(tokenData.id_token, TELEGRAM_JWKS, {
+      const verifiedToken = await jwtVerify(tokenData.id_token, TELEGRAM_JWKS, {
         issuer: TELEGRAM_ISSUER,
         audience: TELEGRAM_CLIENT_ID,
         clockTolerance: 5
@@ -333,7 +333,7 @@ Deno.serve(async (req: Request) => {
       return respond(req, {
         success: true,
         id_token: tokenData.id_token,
-        expires_at: exp ?? null,
+        expires_at: verifiedToken.payload.exp ?? null,
         telegram_id: verified.telegram_id
       });
     }
