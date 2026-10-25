@@ -24,13 +24,13 @@
       if (notice) notice.hidden = true;
     }, true);
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=shadow-ember-1">
+  <link rel="stylesheet" href="css/styles.css?v=shadow-ember-2">
   <script src="https://telegram.org/js/telegram-web-app.js?64"></script>
   <script src="js/telegram-mini-app.js?v=miniapp-ui-2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/supabase-config.js" defer></script>
   <script src="js/auth.js?v=shadow-ember-1" defer></script>
-  <script src="js/app.js" defer></script>
+  <script src="js/app.js?v=copy-inline-1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -156,7 +156,12 @@
               <h3 class="result-title" id="resultTitle">Output address</h3>
               <span class="result-status">● Ready</span>
             </div>
-            <output class="result-output" id="resultOutput" aria-live="polite"></output>
+            <div class="result-output-row">
+              <output class="result-output" id="resultOutput" aria-live="polite"></output>
+              <button class="copy-inline-button" id="inlineCopyButton" type="button" aria-label="Copy output URL" title="Copy output URL">
+                <span aria-hidden="true">⧉</span>
+              </button>
+            </div>
             <div class="result-actions">
               <button class="copy-button" id="copyButton" type="button"><span class="copy-icon" aria-hidden="true">▢</span><span id="copyButtonText">Copy output</span></button>
               <button class="reset-button" id="resetButton" type="button">Clear</button>
