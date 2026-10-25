@@ -4,34 +4,26 @@
   const setupNotice = document.getElementById("setupNotice");
   const authGate = document.getElementById("authGate");
   const appShell = document.getElementById("appShell");
-  const signInButton = document.getElementById("googleSignInButton");
+  const signInButton = document.getElementById("telegramSignInButton");
+  const requestAccessButton = document.getElementById("requestAccessButton");
   const signOutButton = document.getElementById("signOutButton");
-  const inviteDetails = document.getElementById("inviteDetails");
-  const inviteEmailText = document.getElementById("inviteEmail");
-  const inviteExpiryText = document.getElementById("inviteExpiry");
   const authFeedback = document.getElementById("authFeedback");
+  const identityChip = document.getElementById("identityChip");
+  const identityText = document.getElementById("identityText");
   const adminPanel = document.getElementById("adminPanel");
-  const adminInviteForm = document.getElementById("adminInviteForm");
-  const inviteEmailInput = document.getElementById("inviteEmailInput");
-  const inviteExpiryInput = document.getElementById("inviteExpiryInput");
-  const createInviteButton = document.getElementById("createInviteButton");
   const adminFeedback = document.getElementById("adminFeedback");
-  const inviteResult = document.getElementById("inviteResult");
-  const inviteUrlOutput = document.getElementById("inviteUrlOutput");
-  const copyInviteButton = document.getElementById("copyInviteButton");
   const adminRefreshButton = document.getElementById("adminRefreshButton");
-  const authorizedUsersList = document.getElementById("authorizedUsersList");
-  const invitationsList = document.getElementById("invitationsList");
+  const pendingRequestsList = document.getElementById("pendingRequestsList");
+  const activeUsersList = document.getElementById("activeUsersList");
+  const pendingCount = document.getElementById("pendingCount");
   const authorizedCount = document.getElementById("authorizedCount");
-  const invitationCount = document.getElementById("invitationCount");
 
-  let client = null;
-  let currentInviteToken = new URL(window.location.href).searchParams.get("invite");
-  let currentInvite = null;
+  const TOKEN_KEY = "gtrim_telegram_id_token";
+  const STATE_KEY = "gtrim_telegram_state";
+  const VERIFIER_KEY = "gtrim_telegram_verifier";
+  const NONCE_KEY = "gtrim_telegram_nonce";
   let currentUser = null;
   let currentAccess = { authorized: false, isAdmin: false };
-  let resolving = false;
-  let lastStateKey = "";
   let readyResolved = false;
   let resolveReady;
   window.GTrimAuthReady = new Promise(function (resolve) { resolveReady = resolve; });
@@ -40,6 +32,26 @@
     if (readyResolved) return;
     readyResolved = true;
     resolveReady(state);
+  }
+
+  function getConfig() {
+    return window.GTRIMMER_SUPABASE_CONFIG || {};
+  }
+
+  function randomBase64Url(length) {
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    let binary = "";
+    bytes.forEach(function (byte) { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  async function sha256Base64Url(value) {
+    const bytes = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    let binary = "";
+    new Uint8Array(digest).forEach(function (byte) { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   }
 
   function setAuthFeedback(message, type) {
@@ -52,183 +64,199 @@
     adminFeedback.className = "admin-feedback" + (type ? " is-" + type : "");
   }
 
-  function setGateVisible(message, type) {
+  function setGate(message, type) {
     setupNotice.hidden = true;
-    appShell.hidden = true;
     authGate.hidden = false;
-    signOutButton.hidden = !currentUser;
-    setAuthFeedback(message || "", type || "");
+    appShell.hidden = true;
+    signOutButton.hidden = !sessionStorage.getItem(TOKEN_KEY);
+    setAuthFeedback(message, type || "");
+    requestAccessButton.hidden = true;
+    signInButton.hidden = false;
   }
 
-  function setAppVisible(access) {
-    setupNotice.hidden = true;
-    authGate.hidden = true;
-    appShell.hidden = false;
-    signOutButton.hidden = false;
-    adminPanel.hidden = !access.isAdmin;
-    currentAccess = access;
+  function usernameLabel(user) {
+    if (!user) return "your Telegram account";
+    return user.username ? "@" + user.username.replace(/^@/, "") : (user.display_name || "your Telegram account");
   }
 
-  async function readFunctionError(error) {
-    if (error && error.context && typeof error.context.json === "function") {
-      try {
-        const payload = await error.context.json();
-        if (payload && typeof payload.message === "string") return payload.message;
-        if (payload && payload.error && typeof payload.error.message === "string") return payload.error.message;
-      } catch (_error) {}
+  function setIdentity(user) {
+    if (!user) {
+      identityChip.hidden = true;
+      identityText.textContent = "";
+      return;
     }
-    return error && error.message ? error.message : "The secure service could not complete the request.";
+    identityChip.hidden = false;
+    identityText.textContent = usernameLabel(user);
   }
 
-  async function invoke(name, body) {
-    if (!client) throw new Error("Authentication is not configured yet.");
-    const { data, error } = await client.functions.invoke(name, { body: body || {} });
-    if (error) throw new Error(await readFunctionError(error));
-    if (data && data.success === false) throw new Error(data.message || "The request was denied.");
+  async function callFunction(action, payload, tokenOverride) {
+    const config = getConfig();
+    if (!config.supabaseUrl || !config.publishableKey) throw new Error("Supabase is not configured.");
+    const token = tokenOverride || sessionStorage.getItem(TOKEN_KEY);
+    const body = Object.assign({ action: action }, payload || {});
+    if (action !== "exchange-code" && token) body.id_token = token;
+    const response = await fetch(config.supabaseUrl.replace(/\/+$/, "") + "/functions/v1/telegram-auth", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": config.publishableKey
+      },
+      body: JSON.stringify(body)
+    });
+    let data = {};
+    try { data = await response.json(); } catch (_error) {}
+    if (!response.ok || data.success === false) {
+      throw new Error(data.message || data.error || ("Secure service returned HTTP " + response.status));
+    }
     return data;
   }
 
-  function inviteRedirectUrl() {
-    const target = new URL(window.location.href);
-    target.hash = "";
-    target.search = "";
-    if (currentInviteToken) target.searchParams.set("invite", currentInviteToken);
-    return target.toString();
-  }
-
-  async function signInWithGoogle() {
-    if (!client) return;
+  async function startTelegramLogin() {
+    const config = getConfig();
+    if (!config.telegramClientId || !config.telegramRedirectUri) {
+      setAuthFeedback("Telegram Login is not configured yet. Follow the setup guide in the repository README.", "error");
+      return;
+    }
+    if (!window.crypto || !crypto.subtle) {
+      setAuthFeedback("Secure Telegram sign-in requires HTTPS. Open https://turlx.com and try again.", "error");
+      return;
+    }
     signInButton.disabled = true;
-    setAuthFeedback(currentInvite ? "Opening Google sign-in for " + currentInvite.email + "…" : "Opening Google sign-in…", "");
+    setAuthFeedback("Preparing secure Telegram sign-in…", "");
     try {
-      const { error } = await client.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: inviteRedirectUrl(),
-          queryParams: { prompt: "select_account" }
-        }
-      });
-      if (error) throw error;
+      const state = randomBase64Url(32);
+      const nonce = randomBase64Url(32);
+      const verifier = randomBase64Url(48);
+      const challenge = await sha256Base64Url(verifier);
+      sessionStorage.setItem(STATE_KEY, state);
+      sessionStorage.setItem(NONCE_KEY, nonce);
+      sessionStorage.setItem(VERIFIER_KEY, verifier);
+
+      const url = new URL("https://oauth.telegram.org/auth");
+      url.searchParams.set("client_id", config.telegramClientId);
+      url.searchParams.set("redirect_uri", config.telegramRedirectUri);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("scope", "openid profile");
+      url.searchParams.set("state", state);
+      url.searchParams.set("nonce", nonce);
+      url.searchParams.set("code_challenge", challenge);
+      url.searchParams.set("code_challenge_method", "S256");
+      window.location.assign(url.toString());
     } catch (error) {
-      setAuthFeedback(error.message || "Unable to start Google sign-in.", "error");
+      setAuthFeedback(error.message || "Unable to start Telegram sign-in.", "error");
       signInButton.disabled = false;
     }
-  }
-
-  function clearInviteFromAddress() {
-    const target = new URL(window.location.href);
-    target.searchParams.delete("invite");
-    window.history.replaceState({}, document.title, target.pathname + target.search + target.hash);
-  }
-
-  async function checkInvite() {
-    if (!currentInviteToken) return;
-    if (!/^[a-f0-9]{64}$/i.test(currentInviteToken)) {
-      throw new Error("This invitation link is malformed. Ask an administrator for a fresh link.");
-    }
-    currentInvite = await invoke("get-invite", { token: currentInviteToken });
-    if (!currentInvite || !currentInvite.email) throw new Error("This invitation is invalid or expired.");
-    inviteDetails.hidden = false;
-    inviteEmailText.textContent = currentInvite.email;
-    inviteExpiryText.textContent = "Expires " + new Date(currentInvite.expires_at).toLocaleString();
   }
 
   function safeText(value) {
     return String(value == null ? "" : value);
   }
 
-  function createListItem(email, meta, actionLabel, action, dangerous) {
+  function createListItem(title, meta, buttonText, action, dangerous) {
     const row = document.createElement("div");
     row.className = "access-list-item";
     const copy = document.createElement("div");
     copy.className = "access-item-copy";
-    const emailEl = document.createElement("div");
-    emailEl.className = "access-item-email";
-    emailEl.textContent = safeText(email);
+    const titleEl = document.createElement("div");
+    titleEl.className = "access-item-email";
+    titleEl.textContent = safeText(title);
     const metaEl = document.createElement("div");
     metaEl.className = "access-item-meta";
     metaEl.textContent = safeText(meta);
-    copy.append(emailEl, metaEl);
+    copy.append(titleEl, metaEl);
     row.appendChild(copy);
-    if (actionLabel) {
+    if (buttonText) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = dangerous ? "danger-small-button" : "secondary-button";
-      button.textContent = actionLabel;
+      button.textContent = buttonText;
       button.addEventListener("click", action);
       row.appendChild(button);
     }
     return row;
   }
 
+  async function adminAction(action, telegramId) {
+    return await callFunction("admin-manage-access", { action: action, telegram_id: telegramId });
+  }
+
   async function refreshAdminLists() {
     if (!currentAccess.isAdmin) return;
-    authorizedUsersList.replaceChildren();
-    invitationsList.replaceChildren();
-    authorizedUsersList.innerHTML = '<p class="list-empty">Loading accounts…</p>';
-    invitationsList.innerHTML = '<p class="list-empty">Loading invitations…</p>';
     adminRefreshButton.disabled = true;
-    try {
-      const data = await invoke("admin-manage-access", { action: "list" });
-      authorizedUsersList.replaceChildren();
-      invitationsList.replaceChildren();
-      const users = Array.isArray(data.users) ? data.users : [];
-      const invites = Array.isArray(data.invites) ? data.invites : [];
-      authorizedCount.textContent = String(users.filter(function (user) { return user.status === "active"; }).length);
-      invitationCount.textContent = String(invites.filter(function (invite) { return invite.status === "pending" && new Date(invite.expires_at).getTime() > Date.now(); }).length);
+    pendingRequestsList.replaceChildren();
+    activeUsersList.replaceChildren();
+    pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading requests…" }));
+    activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading accounts…" }));
 
-      if (!users.length) {
-        const empty = document.createElement("p");
-        empty.className = "list-empty";
-        empty.textContent = "No accounts yet.";
-        authorizedUsersList.appendChild(empty);
+    try {
+      const data = await callFunction("admin-manage-access", { action: "list" });
+      const requests = Array.isArray(data.requests) ? data.requests : [];
+      const users = Array.isArray(data.users) ? data.users : [];
+      pendingRequestsList.replaceChildren();
+      activeUsersList.replaceChildren();
+      pendingCount.textContent = String(requests.length);
+      authorizedCount.textContent = String(users.filter(function (user) { return user.status === "active"; }).length);
+
+      if (!requests.length) {
+        pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No pending requests." }));
       }
-      users.forEach(function (user) {
-        const isActive = user.status === "active";
-        const meta = (isActive ? "Authorized" : "Access revoked") + " · " + (user.is_admin ? "Admin" : "User");
-        const canRevoke = isActive && !user.is_admin && user.user_id !== (currentUser && currentUser.id);
-        authorizedUsersList.appendChild(createListItem(
-          user.email,
-          meta,
-          canRevoke ? "Revoke" : "",
+      requests.forEach(function (request) {
+        const username = request.username ? "@" + request.username.replace(/^@/, "") : (request.display_name || "Telegram user");
+        pendingRequestsList.appendChild(createListItem(
+          username,
+          "Telegram ID " + request.telegram_id + " · Requested " + new Date(request.requested_at).toLocaleString(),
+          "Approve",
           async function () {
-            if (!window.confirm("Revoke converter access for " + user.email + "?")) return;
+            if (!window.confirm("Approve converter access for " + username + "?")) return;
             try {
-              await invoke("admin-manage-access", { action: "revoke-user", user_id: user.user_id });
-              setAdminFeedback("Access revoked for " + user.email + ".", "success");
+              await adminAction("approve", request.telegram_id);
+              setAdminFeedback("Approved " + username + ".", "success");
               await refreshAdminLists();
-            } catch (error) {
-              setAdminFeedback(error.message, "error");
-            }
+            } catch (error) { setAdminFeedback(error.message, "error"); }
           },
-          true
+          false
         ));
+        const rejectButton = pendingRequestsList.lastElementChild.querySelector("button");
+        if (rejectButton) {
+          rejectButton.insertAdjacentText("afterend", " ");
+          const reject = document.createElement("button");
+          reject.type = "button";
+          reject.className = "danger-small-button";
+          reject.textContent = "Reject";
+          reject.addEventListener("click", async function () {
+            if (!window.confirm("Reject the access request from " + username + "?")) return;
+            try {
+              await adminAction("reject", request.telegram_id);
+              setAdminFeedback("Rejected " + username + ".", "success");
+              await refreshAdminLists();
+            } catch (error) { setAdminFeedback(error.message, "error"); }
+          });
+          pendingRequestsList.lastElementChild.appendChild(reject);
+        }
       });
 
-      if (!invites.length) {
-        const empty = document.createElement("p");
-        empty.className = "list-empty";
-        empty.textContent = "No invitations yet.";
-        invitationsList.appendChild(empty);
+      if (!users.length) {
+        activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No authorized accounts yet." }));
       }
-      invites.forEach(function (invite) {
-        const expired = new Date(invite.expires_at).getTime() <= Date.now();
-        const status = invite.status === "pending" && expired ? "Expired" : invite.status;
-        const canCancel = invite.status === "pending" && !expired;
-        invitationsList.appendChild(createListItem(
-          invite.invited_email,
-          status + " · Expires " + new Date(invite.expires_at).toLocaleString(),
-          canCancel ? "Cancel" : "",
+      users.forEach(function (user) {
+        const username = user.username ? "@" + user.username.replace(/^@/, "") : (user.display_name || "Telegram user");
+        const active = user.status === "active";
+        const isSelf = currentUser && String(user.telegram_id) === String(currentUser.telegram_id);
+        const canChange = !user.is_admin && !isSelf;
+        activeUsersList.appendChild(createListItem(
+          username,
+          "Telegram ID " + user.telegram_id + " · " + (user.is_admin ? "Administrator" : (active ? "Authorized" : "Access revoked")),
+          canChange ? (active ? "Revoke" : "Restore") : "",
           async function () {
+            const action = active ? "revoke" : "restore";
+            if (!window.confirm((active ? "Revoke" : "Restore") + " converter access for " + username + "?")) return;
             try {
-              await invoke("admin-manage-access", { action: "cancel-invite", invite_id: invite.id });
-              setAdminFeedback("Invitation cancelled.", "success");
+              await adminAction(action, user.telegram_id);
+              setAdminFeedback((active ? "Revoked access for " : "Restored access for ") + username + ".", "success");
               await refreshAdminLists();
-            } catch (error) {
-              setAdminFeedback(error.message, "error");
-            }
+            } catch (error) { setAdminFeedback(error.message, "error"); }
           },
-          true
+          active
         ));
       });
     } catch (error) {
@@ -238,81 +266,70 @@
     }
   }
 
-  async function handleSession(session, force) {
-    if (resolving) return;
-    const user = session && session.user ? session.user : null;
-    const key = (user ? user.id : "signed-out") + ":" + (currentInviteToken || "");
-    if (!force && lastStateKey === key) return;
-    resolving = true;
-    currentUser = user;
+  async function setUserState() {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      currentUser = null;
+      currentAccess = { authorized: false, isAdmin: false };
+      setIdentity(null);
+      setGate("Sign in with Telegram to request access. The administrator will approve your verified account.", "");
+      signOutButton.hidden = true;
+      requestAccessButton.hidden = true;
+      finishReady(currentAccess);
+      return;
+    }
 
+    signOutButton.hidden = false;
+    setGate("Verifying your Telegram session…", "");
     try {
-      if (!user) {
-        currentAccess = { authorized: false, isAdmin: false };
-        if (currentInviteToken && !currentInvite) {
-          setGateVisible("Checking invitation…", "");
-        } else if (currentInvite) {
-          setGateVisible("This invitation is for " + currentInvite.email + ". Continue with the same Google account.", "");
-        } else {
-          setGateVisible("An administrator-generated invitation is required for new accounts. The initial administrator must be configured in Supabase.", "");
-        }
-        signInButton.disabled = false;
-        lastStateKey = key;
-        finishReady(currentAccess);
-        return;
-      }
+      const data = await callFunction("access-state", {});
+      currentUser = data.user || null;
+      setIdentity(currentUser);
+      currentAccess = {
+        authorized: data.state === "active" || data.state === "admin",
+        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin),
+        telegramId: data.user && data.user.telegram_id
+      };
 
-      let inviteRedeemError = "";
-      if (currentInviteToken) {
-        if (!currentInvite) {
-          inviteRedeemError = "The invitation link is invalid or expired. Ask an administrator for a new invitation.";
-        } else {
-          try {
-            const redeemed = await invoke("redeem-invite", { token: currentInviteToken });
-            if (redeemed && redeemed.success) {
-              currentInviteToken = null;
-              currentInvite = null;
-              clearInviteFromAddress();
-              setAuthFeedback("Invitation accepted. Checking your account permissions…", "success");
-            } else {
-              throw new Error("Invitation could not be redeemed.");
-            }
-          } catch (error) {
-            inviteRedeemError = error.message;
-          }
-        }
-      }
-
-      let access;
-      try {
-        access = await invoke("check-access", {});
-      } catch (error) {
-        currentAccess = { authorized: false, isAdmin: false };
-        setGateVisible("Could not verify access with the server: " + error.message, "error");
-        lastStateKey = key;
-        finishReady(currentAccess);
-        return;
-      }
-
-      currentAccess = { authorized: !!access.authorized, isAdmin: !!access.is_admin, email: user.email || "" };
-      if (currentAccess.authorized) {
-        setAppVisible(currentAccess);
-        lastStateKey = (user ? user.id : "signed-out") + ":" + (currentInviteToken || "");
+      if (data.state === "active" || data.state === "admin") {
+        authGate.hidden = true;
+        setupNotice.hidden = true;
+        appShell.hidden = false;
+        signOutButton.hidden = false;
+        adminPanel.hidden = !currentAccess.isAdmin;
         if (currentAccess.isAdmin) await refreshAdminLists();
       } else {
-        const msg = inviteRedeemError || ("Signed in as " + (user.email || "your Google account") + ", but this account is not authorized. Use the Google email that received an invitation.");
-        setGateVisible(msg, "error");
-        lastStateKey = key;
+        appShell.hidden = true;
+        authGate.hidden = false;
+        setupNotice.hidden = true;
+        signInButton.hidden = false;
+        requestAccessButton.hidden = !(data.state === "needs_request" || data.state === "rejected");
+        if (data.state === "pending") {
+          setAuthFeedback("Your request is pending. The administrator will review " + usernameLabel(currentUser) + ".", "");
+        } else if (data.state === "revoked") {
+          setAuthFeedback("Access for " + usernameLabel(currentUser) + " has been revoked. Contact the administrator if you think this is a mistake.", "error");
+        } else if (data.state === "rejected") {
+          setAuthFeedback("Your previous request was declined. You may submit another request if needed.", "error");
+        } else {
+          setAuthFeedback("Signed in as " + usernameLabel(currentUser) + ". Request approval to enable the converter.", "");
+        }
       }
       finishReady(currentAccess);
-    } finally {
-      resolving = false;
+    } catch (error) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem("gtrim_telegram_exp");
+      currentUser = null;
+      currentAccess = { authorized: false, isAdmin: false };
+      setIdentity(null);
+      setGate("Could not verify your Telegram session: " + error.message + " Sign in again after checking the setup.", "error");
+      signOutButton.hidden = true;
+      finishReady(currentAccess);
     }
   }
 
   async function initialize() {
-    const config = window.GTRIMMER_SUPABASE_CONFIG || {};
-    if (!window.supabase || !config.url || !config.publishableKey) {
+    const config = getConfig();
+    if (!config.supabaseUrl || !config.publishableKey || !config.telegramClientId || !config.telegramRedirectUri) {
       setupNotice.hidden = false;
       authGate.hidden = true;
       appShell.hidden = true;
@@ -321,106 +338,41 @@
       return;
     }
 
-    client = window.supabase.createClient(config.url, config.publishableKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: "pkce"
-      }
-    });
-
-    signInButton.addEventListener("click", signInWithGoogle);
-    signOutButton.addEventListener("click", async function () {
-      signOutButton.disabled = true;
+    signInButton.addEventListener("click", startTelegramLogin);
+    requestAccessButton.addEventListener("click", async function () {
+      requestAccessButton.disabled = true;
+      requestAccessButton.textContent = "Submitting…";
       try {
-        await client.auth.signOut();
-        currentUser = null;
-        lastStateKey = "";
-        await handleSession(null, true);
+        await callFunction("request-access", {});
+        await setUserState();
       } catch (error) {
-        setAuthFeedback("Sign-out failed: " + error.message, "error");
+        setAuthFeedback(error.message, "error");
       } finally {
-        signOutButton.disabled = false;
+        requestAccessButton.disabled = false;
+        requestAccessButton.textContent = "Request converter access";
       }
     });
-
-    adminInviteForm.addEventListener("submit", async function (event) {
-      event.preventDefault();
-      setAdminFeedback("", "");
-      createInviteButton.disabled = true;
-      createInviteButton.textContent = "Creating…";
-      inviteResult.hidden = true;
-      try {
-        const data = await invoke("create-invite", {
-          email: inviteEmailInput.value.trim(),
-          expires_in_hours: Number(inviteExpiryInput.value)
-        });
-        inviteUrlOutput.value = data.invite_url;
-        inviteResult.hidden = false;
-        inviteEmailInput.value = "";
-        setAdminFeedback("Invitation created. Send the link only to the intended Google account.", "success");
-        await refreshAdminLists();
-      } catch (error) {
-        setAdminFeedback(error.message, "error");
-      } finally {
-        createInviteButton.disabled = false;
-        createInviteButton.innerHTML = 'Create invitation <span aria-hidden="true">↗</span>';
-      }
+    signOutButton.addEventListener("click", function () {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem("gtrim_telegram_exp");
+      currentUser = null;
+      currentAccess = { authorized: false, isAdmin: false };
+      setIdentity(null);
+      adminPanel.hidden = true;
+      setUserState();
     });
-
-    copyInviteButton.addEventListener("click", async function () {
-      const text = inviteUrlOutput.value;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(text);
-        } else {
-          inviteUrlOutput.select();
-          if (!document.execCommand("copy")) throw new Error("Copy blocked");
-        }
-        copyInviteButton.textContent = "Copied";
-      } catch (_error) {
-        inviteUrlOutput.focus();
-        inviteUrlOutput.select();
-        setAdminFeedback("Select the invitation URL and copy it manually.", "error");
-      }
-      window.setTimeout(function () { copyInviteButton.textContent = "Copy link"; }, 1500);
-    });
-
     adminRefreshButton.addEventListener("click", refreshAdminLists);
-
-    try {
-      if (currentInviteToken) await checkInvite();
-    } catch (error) {
-      currentInvite = null;
-      setGateVisible(error.message, "error");
-    }
-
-    const { data, error } = await client.auth.getSession();
-    if (error) {
-      setGateVisible("Could not restore your session. Please sign in again.", "error");
-      finishReady({ authorized: false, isAdmin: false });
-    } else {
-      await handleSession(data.session || null, true);
-    }
-
-    client.auth.onAuthStateChange(function (_event, session) {
-      window.setTimeout(function () { handleSession(session, false); }, 0);
-    });
+    await setUserState();
   }
 
   window.GTrimAuth = {
     convertShareUrl: async function (rawUrl) {
-      return await invoke("convert-share-url", { raw_url: rawUrl });
+      if (!currentAccess.authorized) throw new Error("Your Telegram account is not authorized to convert links.");
+      return await callFunction("convert-share-url", { raw_url: rawUrl });
     },
-    refreshAccess: async function () {
-      if (!client) return;
-      const { data } = await client.auth.getSession();
-      lastStateKey = "";
-      await handleSession(data.session || null, true);
-    },
-    invokeAdmin: invoke,
-    get client() { return client; }
+    refreshAccess: setUserState,
+    callFunction: callFunction,
+    get currentAccess() { return currentAccess; }
   };
 
   initialize().catch(function (error) {
