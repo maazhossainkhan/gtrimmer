@@ -531,3 +531,40 @@ button:focus-visible, input:focus-visible { outline-color: #a9f1c9; }
   .converter-card { padding: 21px 18px; }
   .header-inner { min-height: 62px; padding-inline: 16px; }
 }
+
+
+/* Contact support link */
+.contact-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid rgba(126, 211, 174, .34);
+  border-radius: 10px;
+  color: #d8f8e8;
+  background: linear-gradient(135deg, rgba(38, 130, 90, .26), rgba(24, 77, 63, .36));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: .2px;
+  white-space: nowrap;
+  transition: border-color .16s, background .16s, transform .16s;
+}
+.contact-button span:first-child { color: #91edbd; font-size: 14px; }
+.contact-button:hover {
+  border-color: rgba(145, 237, 189, .62);
+  background: linear-gradient(135deg, rgba(42, 151, 101, .38), rgba(29, 91, 70, .46));
+  transform: translateY(-1px);
+}
+.contact-button:active { transform: translateY(0); }
+.contact-button:focus-visible { outline: 2px solid #91edbd; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .header-actions { gap: 7px; }
+  .contact-button { min-height: 32px; padding: 0 9px; font-size: 9px; gap: 5px; }
+  .header-pill { display: none; }
+}
+@media (max-width: 330px) {
+  .contact-button { padding-inline: 7px; }
+}
