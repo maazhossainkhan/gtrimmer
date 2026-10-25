@@ -113,7 +113,7 @@
     return row;
   }
   async function adminAction(action, userId) {
-    return await invokeServer("admin-manage-access", { action, user_id: userId });
+    return await invokeServer("admin-manage-access", { admin_action: action, user_id: userId });
   }
   async function refreshAdminLists() {
     if (!currentAccess.isAdmin) return;
@@ -123,7 +123,7 @@
     pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading requests…" }));
     activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading accounts…" }));
     try {
-      const data = await invokeServer("admin-manage-access", { action: "list" });
+      const data = await invokeServer("admin-manage-access", { admin_action: "list" });
       const requests = Array.isArray(data.requests) ? data.requests : [];
       const users = Array.isArray(data.users) ? data.users : [];
       pendingRequestsList.replaceChildren();
