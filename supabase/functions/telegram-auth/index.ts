@@ -120,7 +120,7 @@ async function requireAdmin(identity: ReturnType<typeof identityFromUser>) {
 async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: Record<string, unknown>) {
   requireDatabase();
   await requireAdmin(identity);
-  const action = String(body.action ?? "");
+  const action = String(body.admin_action ?? "");
   if (action === "list") {
     const [{ data: requests, error: requestError }, { data: users, error: usersError }] = await Promise.all([
       db!.from("gtrimmer_access_requests").select("user_id, telegram_id, username, display_name, status, requested_at")
