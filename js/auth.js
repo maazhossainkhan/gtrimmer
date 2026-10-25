@@ -303,6 +303,8 @@
     miniInitData = telegram && typeof telegram.initData === "string" ? telegram.initData : "";
     signInButton.hidden = true;
     signOutButton.hidden = true;
+    const authDescription = document.getElementById("authDescription");
+    if (authDescription) authDescription.textContent = "Your Telegram identity is verified securely inside this Mini App. Request permission and wait for administrator approval before converting links.";
     setGate("Verifying your Telegram Mini App identity…", "");
     signInButton.hidden = true;
     requestAccessButton.hidden = true;
