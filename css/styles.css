@@ -210,3 +210,116 @@ input[type="url"]::placeholder { color: #656b82; opacity: 1; }
 .request-access-button { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; margin-top: 12px; padding: 11px 14px; border: 1px solid rgba(200,185,255,.29); border-radius: 12px; color: #e8e3ff; background: rgba(169,144,255,.10); font-size: 11px; font-weight: 800; cursor: pointer; transition: background .16s, border-color .16s; }
 .request-access-button:hover { border-color: rgba(184,164,255,.55); background: rgba(169,144,255,.16); }
 .request-access-button:disabled { opacity: .55; cursor: wait; }
+
+
+/* Shadow Midnight refresh: deeper navy surfaces and richer violet/blue accents */
+:root {
+  --bg: #040610;
+  --panel: #0b1020;
+  --panel-strong: #0e1428;
+  --border: rgba(116, 101, 255, .22);
+  --border-strong: rgba(137, 119, 255, .34);
+  --text: #f7f7ff;
+  --muted: #b7c1e5;
+  --muted-dim: #8b97c2;
+  --primary: #c3a7ff;
+  --primary-strong: #8a55ff;
+  --blue: #4e8dff;
+  --green: #51f2c2;
+}
+body {
+  background:
+    radial-gradient(ellipse at 12% -8%, rgba(92, 54, 224, .24), transparent 38%),
+    radial-gradient(ellipse at 88% 20%, rgba(20, 93, 220, .20), transparent 34%),
+    radial-gradient(ellipse at 52% 105%, rgba(83, 35, 180, .12), transparent 45%),
+    linear-gradient(180deg, #050713 0%, #03050d 58%, #060817 100%);
+}
+.site-header { border-bottom-color: rgba(120, 111, 255, .18); background: rgba(4, 6, 16, .91); }
+.brand-mark, .auth-symbol {
+  border-color: rgba(154, 119, 255, .42);
+  background: linear-gradient(145deg, rgba(110, 68, 240, .36), rgba(26, 89, 220, .19));
+  box-shadow: 0 0 26px rgba(95, 61, 240, .13), inset 0 1px 0 rgba(255,255,255,.09);
+}
+.eyebrow {
+  border-color: rgba(139, 107, 255, .38);
+  color: #d9caff;
+  background: linear-gradient(100deg, rgba(96, 56, 210, .20), rgba(40, 88, 200, .12));
+}
+.converter-card, .auth-card, .admin-panel {
+  border-color: rgba(119, 105, 255, .24);
+  background: linear-gradient(148deg, rgba(15, 20, 40, .98), rgba(7, 10, 23, .98) 70%, rgba(11, 13, 31, .98));
+  box-shadow: 0 28px 90px rgba(0,0,0,.44), 0 0 44px rgba(72, 47, 186, .07), inset 0 1px 0 rgba(255,255,255,.045);
+}
+.auth-wrap { background: radial-gradient(ellipse at 50% 12%, rgba(90, 56, 222, .09), transparent 48%); }
+.hero-description, .auth-description { color: #bcc6e7; }
+.mini-benefit, .admin-heading p { color: #b1bbdf; }
+.card-subtitle, .field-tip, .info-copy { color: #98a4cf; }
+.card-icon, .info-icon {
+  border: 1px solid rgba(135, 104, 255, .30);
+  color: #d5c2ff;
+  background: linear-gradient(145deg, rgba(108, 64, 231, .24), rgba(23, 81, 190, .17));
+}
+.input-shell { border-color: rgba(110, 125, 190, .24); background: rgba(2, 4, 12, .78); }
+.input-shell:focus-within {
+  border-color: rgba(149, 112, 255, .78);
+  background: rgba(4, 7, 18, .96);
+  box-shadow: 0 0 0 3px rgba(118, 73, 255, .15), 0 0 22px rgba(86, 54, 210, .12);
+}
+.convert-button, .primary-button {
+  border-color: rgba(190, 166, 255, .50);
+  background: linear-gradient(105deg, #5b31c9 0%, #7544ef 48%, #315fe1 100%);
+  box-shadow: 0 12px 30px rgba(95, 48, 215, .28), inset 0 1px 0 rgba(255,255,255,.22);
+}
+.convert-button:hover, .primary-button:hover {
+  filter: brightness(1.12) saturate(1.08);
+  box-shadow: 0 15px 34px rgba(95, 48, 215, .34), 0 0 22px rgba(67, 99, 255, .12);
+}
+.telegram-button, .signout-button, .secondary-button, .copy-button, .reset-button {
+  border-color: rgba(125, 126, 202, .30);
+  background: linear-gradient(135deg, rgba(28, 34, 63, .85), rgba(12, 17, 34, .92));
+}
+.telegram-button:hover, .signout-button:hover, .secondary-button:hover, .copy-button:hover, .reset-button:hover {
+  border-color: rgba(155, 119, 255, .66);
+  background: linear-gradient(135deg, rgba(58, 37, 117, .50), rgba(18, 39, 91, .52));
+}
+.header-pill, .info-item { border-color: rgba(105, 118, 190, .20); background: rgba(16, 22, 43, .72); }
+.auth-title span, h1 .gradient {
+  background: linear-gradient(100deg, #dfcaff 0%, #a984ff 42%, #64aaff 100%);
+  background-clip: text; -webkit-background-clip: text; color: transparent;
+}
+.auth-feedback, .admin-feedback { color: #b7c4e8; }
+.auth-smallprint, .auth-footnote, .privacy-note p { color: #9aa7d0; }
+.auth-divider span:first-child, .auth-divider span:last-child { background: rgba(118, 112, 206, .24); }
+
+/* Telegram channel membership gate */
+.channel-gate {
+  display: flex; align-items: flex-start; gap: 13px; margin-top: 17px; padding: 16px;
+  border: 1px solid rgba(133, 99, 255, .46); border-radius: 14px;
+  background: linear-gradient(140deg, rgba(55, 31, 117, .42), rgba(10, 31, 72, .62));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 10px 28px rgba(0,0,0,.18);
+}
+.channel-gate-icon {
+  display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto;
+  border: 1px solid rgba(160, 126, 255, .44); border-radius: 12px;
+  color: #e0ceff; background: rgba(112, 67, 231, .25); font-size: 17px;
+}
+.channel-gate-content { min-width: 0; flex: 1; }
+.channel-gate h2 { margin: 1px 0 6px; color: #f5f2ff; font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
+.channel-gate p { margin: 0; color: #b9c4e7; font-size: 11px; line-height: 1.65; }
+.channel-join-link {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 41px;
+  margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(128, 157, 255, .45); border-radius: 10px;
+  color: #f1f4ff; background: linear-gradient(105deg, #214fb5, #4730a2); font-size: 11px; font-weight: 800;
+  box-shadow: 0 8px 20px rgba(23, 55, 151, .22);
+}
+.channel-join-link:hover { filter: brightness(1.12); }
+.verify-channel-button {
+  width: 100%; min-height: 40px; margin-top: 8px; border: 1px solid rgba(83, 239, 194, .36);
+  border-radius: 10px; color: #bfffea; background: linear-gradient(110deg, rgba(10, 105, 94, .64), rgba(11, 63, 85, .74));
+  font-size: 11px; font-weight: 800; cursor: pointer;
+}
+.verify-channel-button:hover { border-color: rgba(83, 239, 194, .7); filter: brightness(1.08); }
+.verify-channel-button:disabled { opacity: .62; cursor: wait; }
+.channel-feedback { margin-top: 8px !important; color: #93e8d4 !important; }
+.channel-feedback.is-error { color: #ffabbc !important; }
+@media (max-width: 420px) { .channel-gate { gap: 10px; padding: 13px; } .channel-gate-icon { width: 32px; height: 32px; } }
