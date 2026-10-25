@@ -14,10 +14,14 @@
   const adminRefreshButton = document.getElementById("adminRefreshButton");
   const pendingRequestsList = document.getElementById("pendingRequestsList");
   const activeUsersList = document.getElementById("activeUsersList");
+  const revokedUsersList = document.getElementById("revokedUsersList");
   const pendingCount = document.getElementById("pendingCount");
   const authorizedCount = document.getElementById("authorizedCount");
+  const revokedCount = document.getElementById("revokedCount");
+  const clearRevokedButton = document.getElementById("clearRevokedButton");
   const pendingAccessDropdown = document.getElementById("pendingAccessDropdown");
   const authorizedAccessDropdown = document.getElementById("authorizedAccessDropdown");
+  const revokedAccessDropdown = document.getElementById("revokedAccessDropdown");
   let client = null;
   let currentUser = null;
   let currentAccess = { authorized: false, isAdmin: false };
@@ -145,21 +149,34 @@
     adminRefreshButton.disabled = true;
     pendingRequestsList.replaceChildren();
     activeUsersList.replaceChildren();
+    revokedUsersList.replaceChildren();
     pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading requests…" }));
-    activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading accounts…" }));
+    activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading authorized accounts…" }));
+    revokedUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading revoked accounts…" }));
     try {
       const data = await invokeServer("admin-manage-access", { admin_action: "list" });
       const requests = Array.isArray(data.requests) ? data.requests : [];
       const users = Array.isArray(data.users) ? data.users : [];
+      const authorizedUsers = users.filter(user => user.status === "active");
+      const revokedUsers = users.filter(user => user.status !== "active");
+
       pendingRequestsList.replaceChildren();
       activeUsersList.replaceChildren();
+      revokedUsersList.replaceChildren();
       pendingCount.textContent = String(requests.length);
-      authorizedCount.textContent = String(users.filter(user => user.status === "active").length);
-      // Keep the panel compact; automatically expose pending items that need attention.
+      authorizedCount.textContent = String(authorizedUsers.length);
+      revokedCount.textContent = String(revokedUsers.length);
+      if (clearRevokedButton) clearRevokedButton.disabled = revokedUsers.length === 0;
+
+      // Keep pending work visible; keep long account lists collapsed unless the admin opens them.
       if (pendingAccessDropdown) pendingAccessDropdown.open = requests.length > 0;
       if (authorizedAccessDropdown && !authorizedAccessDropdown.dataset.userToggled) {
         authorizedAccessDropdown.open = false;
       }
+      if (revokedAccessDropdown && !revokedAccessDropdown.dataset.userToggled) {
+        revokedAccessDropdown.open = false;
+      }
+
       if (!requests.length) {
         pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No pending requests." }));
       }
@@ -190,30 +207,75 @@
         row.appendChild(reject);
         pendingRequestsList.appendChild(row);
       });
-      if (!users.length) {
-        activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No authorized accounts yet." }));
+
+      if (!authorizedUsers.length) {
+        activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No authorized accounts." }));
       }
-      users.forEach(function (user) {
+      authorizedUsers.forEach(function (user) {
         const username = user.username ? "@" + String(user.username).replace(/^@/, "") : (user.display_name || "Telegram user");
-        const active = user.status === "active";
-        const isSelf = currentUser && (String(user.user_id) === String(currentUser.user_id) || (user.telegram_id && currentUser.telegram_id && String(user.telegram_id) === String(currentUser.telegram_id)));
+        const isSelf = currentUser && (String(user.user_id) === String(currentUser.user_id) ||
+          (user.telegram_id && currentUser.telegram_id && String(user.telegram_id) === String(currentUser.telegram_id)));
         const canChange = !user.is_admin && !isSelf;
         const meta = (user.telegram_id ? "Telegram ID " + user.telegram_id + " · " : "") +
-          "Supabase user " + user.user_id + " · " + (user.is_admin ? "Administrator" : (active ? "Authorized" : "Access revoked"));
-        activeUsersList.appendChild(createListItem(username, meta, canChange ? (active ? "Revoke" : "Restore") : "", async function () {
-          const action = active ? "revoke" : "restore";
-          if (!window.confirm((active ? "Revoke" : "Restore") + " converter access for " + username + "?")) return;
+          "Supabase user " + user.user_id + " · " + (user.is_admin ? "Administrator" : "Authorized");
+        activeUsersList.appendChild(createListItem(username, meta, canChange ? "Revoke" : "", async function () {
+          if (!window.confirm("Revoke converter access for " + username + "?")) return;
           try {
-            await adminAction(action, user.user_id);
-            setAdminFeedback((active ? "Revoked access for " : "Restored access for ") + username + ".", "success");
+            await adminAction("revoke", user.user_id);
+            setAdminFeedback("Revoked access for " + username + ". Moved to Revoked accounts.", "success");
             await refreshAdminLists();
           } catch (error) { setAdminFeedback(error.message, "error"); }
-        }, active));
+        }, true));
+      });
+
+      if (!revokedUsers.length) {
+        revokedUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "No revoked accounts." }));
+      }
+      revokedUsers.forEach(function (user) {
+        const username = user.username ? "@" + String(user.username).replace(/^@/, "") : (user.display_name || "Telegram user");
+        const isSelf = currentUser && (String(user.user_id) === String(currentUser.user_id) ||
+          (user.telegram_id && currentUser.telegram_id && String(user.telegram_id) === String(currentUser.telegram_id)));
+        const canChange = !user.is_admin && !isSelf;
+        const meta = (user.telegram_id ? "Telegram ID " + user.telegram_id + " · " : "") +
+          "Supabase user " + user.user_id + " · Access revoked";
+        revokedUsersList.appendChild(createListItem(username, meta, canChange ? "Restore" : "", async function () {
+          if (!window.confirm("Restore converter access for " + username + "?")) return;
+          try {
+            await adminAction("restore", user.user_id);
+            setAdminFeedback("Restored access for " + username + ". Moved to Authorized accounts.", "success");
+            await refreshAdminLists();
+          } catch (error) { setAdminFeedback(error.message, "error"); }
+        }, false));
       });
     } catch (error) {
       setAdminFeedback("Could not load access lists: " + error.message, "error");
     } finally {
       adminRefreshButton.disabled = false;
+      if (clearRevokedButton) clearRevokedButton.disabled = Number(revokedCount.textContent) === 0;
+    }
+  }
+
+  async function clearRevokedAccounts() {
+    if (!currentAccess.isAdmin || !clearRevokedButton) return;
+    const count = Number(revokedCount.textContent) || 0;
+    if (!count) return;
+    const confirmed = window.confirm(
+      "Permanently clear " + count + " revoked account entr" + (count === 1 ? "y" : "ies") +
+      " from the access lists? Active accounts and pending requests will not be changed. Cleared accounts may need to request access again."
+    );
+    if (!confirmed) return;
+    clearRevokedButton.disabled = true;
+    try {
+      const result = await invokeServer("admin-manage-access", { admin_action: "clear-revoked" });
+      const skipped = Number(result.skipped_count) || 0;
+      const message = (result.message || "Revoked account entries cleared.") +
+        (skipped ? " " + skipped + " conflicting account(s) were kept for safety." : "");
+      setAdminFeedback(message, skipped ? "error" : "success");
+      if (revokedAccessDropdown) revokedAccessDropdown.open = true;
+      await refreshAdminLists();
+    } catch (error) {
+      setAdminFeedback("Could not clear revoked accounts: " + error.message, "error");
+      clearRevokedButton.disabled = Number(revokedCount.textContent) === 0;
     }
   }
   async function setUserState(session) {
@@ -313,6 +375,14 @@
     pendingAccessDropdown.addEventListener("toggle", function () {
       pendingAccessDropdown.dataset.userToggled = "true";
     });
+  }
+  if (revokedAccessDropdown) {
+    revokedAccessDropdown.addEventListener("toggle", function () {
+      revokedAccessDropdown.dataset.userToggled = "true";
+    });
+  }
+  if (clearRevokedButton) {
+    clearRevokedButton.addEventListener("click", clearRevokedAccounts);
   }
 
   async function initializeMiniApp() {
