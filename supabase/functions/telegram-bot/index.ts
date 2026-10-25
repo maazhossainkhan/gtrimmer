@@ -6,6 +6,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_TELEGRAM_IDS = new Set((Deno.env.get("ADMIN_TELEGRAM_IDS") ?? "").split(",").map(v => v.trim()).filter(v => /^\d+$/.test(v)));
 const MINI_APP_URL = "https://turlx.com/";
+const CONTACT_URL = "https://t.me/maazhossainkhan";
 const API_BASE = "https://api.telegram.org";
 const db = SUPABASE_URL && SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -39,7 +40,7 @@ function keyboard() {
     keyboard: [
       [{ text: "🚀 Open Google Trim", style: "primary", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link", style: "success" }],
       [{ text: "🔐 My Access", style: "primary" }, { text: "📩 Request Access", style: "success" }],
-      [{ text: "ℹ️ Help", style: "primary" }]
+      [{ text: "ℹ️ Help", style: "primary" }, { text: "💬 Contact Support", style: "success" }]
     ],
     resize_keyboard: true,
     // Do not force the reply keyboard to stay open. Telegram's native keyboard
@@ -180,6 +181,7 @@ async function configureTelegramMenu(chatId: number) {
       { command: "convert", description: "🟢 Convert a share.google link" },
       { command: "access", description: "🔐 Check your access status" },
       { command: "request", description: "📩 Request converter access" },
+      { command: "contact", description: "💬 Contact support" },
       { command: "help", description: "ℹ️ How to use Google Trim" }
     ] });
   } catch (error) { console.warn("Could not refresh bot commands:", error); }
@@ -208,15 +210,24 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
     });
     return;
   }
+  if (command === "/contact" || text === "💬 Contact Support") {
+    await sendMessage(
+      chatId,
+      "💬 Need help with Google Trim?\n\nFor any issue, send a message to @maazhossainkhan. Include a short description of the problem so support can help you.",
+      { reply_markup: { inline_keyboard: [[{ text: "✉️ Message @maazhossainkhan", style: "primary", url: CONTACT_URL }]] } }
+    );
+    return;
+  }
   if (command === "/help" || text === "ℹ️ Help") {
     await sendMessage(chatId,
       "Google Trim by Shadow — Help\n\n" +
       "• Open Google Trim: launch the Mini App.\n" +
       "• Convert Link: send a share.google URL here and the bot returns its converted URL.\n" +
       "• My Access: check your current permission.\n" +
-      "• Request Access: ask the administrator for permission.\n\n" +
+      "• Request Access: ask the administrator for permission.\n" +
+      "• Contact Support: message support if you run into an issue.\n\n" +
       "The bot only converts approved accounts. A request remains pending until an administrator approves it.\n\n" +
-      "Commands: /start, /app, /convert, /access, /request, /help.", { reply_markup: keyboard() });
+      "Commands: /start, /app, /convert, /access, /request, /contact, /help.", { reply_markup: keyboard() });
     return;
   }
   if (command === "/access" || command === "/myaccess" || text === "🔐 My Access") {
