@@ -6,14 +6,13 @@
   const resultBox = document.getElementById("resultBox");
   const resultOutput = document.getElementById("resultOutput");
   const errorMessage = document.getElementById("errorMessage");
+  const convertButton = document.getElementById("convertButton");
   const copyButton = document.getElementById("copyButton");
   const copyButtonText = document.getElementById("copyButtonText");
   const copyFeedback = document.getElementById("copyFeedback");
   const resetButton = document.getElementById("resetButton");
 
-  if (!form || !input || !resultBox || !resultOutput || !errorMessage || !copyButton || !copyButtonText || !copyFeedback || !resetButton || !window.GUrlConverter) {
-    return;
-  }
+  if (!form || !input || !resultBox || !resultOutput || !errorMessage || !convertButton || !copyButton || !copyButtonText || !copyFeedback || !resetButton) return;
 
   let lastConvertedUrl = "";
   let feedbackTimer = null;
@@ -35,19 +34,28 @@
     clearFeedback();
   }
 
-  function handleConvert(event) {
-    if (event) event.preventDefault();
+  async function handleConvert(event) {
+    event.preventDefault();
     errorMessage.textContent = "";
+    copyFeedback.textContent = "";
     clearFeedback();
+    convertButton.disabled = true;
+    convertButton.querySelector("span").textContent = "Validating access…";
 
     try {
-      const converted = window.GUrlConverter.convertShareUrl(input.value);
+      const converted = await window.GTrimAuth.convertShareUrl(input.value);
       lastConvertedUrl = converted.url;
       resultOutput.textContent = converted.url;
       resultBox.hidden = false;
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Unable to convert this URL. Please try again.");
-      input.focus();
+      const message = error instanceof Error ? error.message : "Unable to convert this URL. Please try again.";
+      showError(message);
+      if (/access|authorized|sign in|session|jwt|token/i.test(message) && window.GTrimAuth) {
+        await window.GTrimAuth.refreshAccess();
+      }
+    } finally {
+      convertButton.disabled = false;
+      convertButton.querySelector("span").textContent = "Convert share link";
     }
   }
 
@@ -57,29 +65,21 @@
         await navigator.clipboard.writeText(value);
         return true;
       } catch (_error) {
-        // Clipboard access can be blocked by browser permissions; use the legacy fallback.
+        // Clipboard permission may be blocked; try the legacy fallback below.
       }
     }
-
     const temporaryInput = document.createElement("textarea");
     temporaryInput.value = value;
     temporaryInput.setAttribute("readonly", "");
     temporaryInput.setAttribute("aria-hidden", "true");
     temporaryInput.style.position = "fixed";
     temporaryInput.style.opacity = "0";
-    temporaryInput.style.pointerEvents = "none";
     temporaryInput.style.left = "-9999px";
     document.body.appendChild(temporaryInput);
     temporaryInput.select();
-
     let copied = false;
-    try {
-      copied = document.execCommand("copy");
-    } catch (_error) {
-      copied = false;
-    } finally {
-      temporaryInput.remove();
-    }
+    try { copied = document.execCommand("copy"); } catch (_error) { copied = false; }
+    temporaryInput.remove();
     return copied;
   }
 
@@ -88,21 +88,16 @@
     clearFeedback();
     copyButton.disabled = true;
     copyButtonText.textContent = "Copying…";
-
     try {
-      const copied = await copyWithFallback(lastConvertedUrl);
-      if (!copied) throw new Error("Clipboard permission was denied.");
+      if (!(await copyWithFallback(lastConvertedUrl))) throw new Error("Copy blocked");
       copyButtonText.textContent = "✓ Copied";
       copyFeedback.textContent = "URL copied to your clipboard.";
     } catch (_error) {
       copyButtonText.textContent = "Copy URL";
-      copyFeedback.textContent = "Copy was blocked by the browser. Select the URL above and copy it manually.";
-      copyFeedback.style.color = "#ff8799";
+      copyFeedback.textContent = "The browser blocked copying. Select the URL above and copy it manually.";
+      copyFeedback.style.color = "#ff9aaa";
     } finally {
       copyButton.disabled = false;
-      if (!copyFeedback.textContent.includes("blocked")) {
-        copyFeedback.style.color = "";
-      }
       feedbackTimer = window.setTimeout(function () {
         copyButtonText.textContent = "Copy URL";
         feedbackTimer = null;
@@ -120,10 +115,13 @@
     input.focus();
   }
 
-  form.addEventListener("submit", handleConvert);
-  input.addEventListener("input", function () {
-    if (errorMessage.textContent) errorMessage.textContent = "";
+  window.GTrimAuthReady.then(function (state) {
+    if (!state || !state.authorized) return;
+    form.addEventListener("submit", handleConvert);
+    copyButton.addEventListener("click", handleCopy);
+    resetButton.addEventListener("click", handleReset);
+    input.addEventListener("input", function () {
+      if (errorMessage.textContent) errorMessage.textContent = "";
+    });
   });
-  copyButton.addEventListener("click", handleCopy);
-  resetButton.addEventListener("click", handleReset);
 })();
