@@ -291,35 +291,3 @@ body {
 .auth-smallprint, .auth-footnote, .privacy-note p { color: #9aa7d0; }
 .auth-divider span:first-child, .auth-divider span:last-child { background: rgba(118, 112, 206, .24); }
 
-/* Telegram channel membership gate */
-.channel-gate {
-  display: flex; align-items: flex-start; gap: 13px; margin-top: 17px; padding: 16px;
-  border: 1px solid rgba(133, 99, 255, .46); border-radius: 14px;
-  background: linear-gradient(140deg, rgba(55, 31, 117, .42), rgba(10, 31, 72, .62));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 10px 28px rgba(0,0,0,.18);
-}
-.channel-gate-icon {
-  display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto;
-  border: 1px solid rgba(160, 126, 255, .44); border-radius: 12px;
-  color: #e0ceff; background: rgba(112, 67, 231, .25); font-size: 17px;
-}
-.channel-gate-content { min-width: 0; flex: 1; }
-.channel-gate h2 { margin: 1px 0 6px; color: #f5f2ff; font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
-.channel-gate p { margin: 0; color: #b9c4e7; font-size: 11px; line-height: 1.65; }
-.channel-join-link {
-  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 41px;
-  margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(128, 157, 255, .45); border-radius: 10px;
-  color: #f1f4ff; background: linear-gradient(105deg, #214fb5, #4730a2); font-size: 11px; font-weight: 800;
-  box-shadow: 0 8px 20px rgba(23, 55, 151, .22);
-}
-.channel-join-link:hover { filter: brightness(1.12); }
-.verify-channel-button {
-  width: 100%; min-height: 40px; margin-top: 8px; border: 1px solid rgba(83, 239, 194, .36);
-  border-radius: 10px; color: #bfffea; background: linear-gradient(110deg, rgba(10, 105, 94, .64), rgba(11, 63, 85, .74));
-  font-size: 11px; font-weight: 800; cursor: pointer;
-}
-.verify-channel-button:hover { border-color: rgba(83, 239, 194, .7); filter: brightness(1.08); }
-.verify-channel-button:disabled { opacity: .62; cursor: wait; }
-.channel-feedback { margin-top: 8px !important; color: #93e8d4 !important; }
-.channel-feedback.is-error { color: #ffabbc !important; }
-@media (max-width: 420px) { .channel-gate { gap: 10px; padding: 13px; } .channel-gate-icon { width: 32px; height: 32px; } }
