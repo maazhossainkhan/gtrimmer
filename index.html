@@ -10,7 +10,7 @@
     // Fail visibly instead of leaving the page blank if a critical frontend script fails.
     window.addEventListener("error", function (event) {
       const file = event.filename || (event.target && event.target.src) || "";
-      if (!/auth\\.js|supabase-config\\.js|supabase-js|telegram-web-app/i.test(file)) return;
+      if (!/auth[.]js|supabase-config[.]js|supabase-js|telegram-web-app/i.test(file)) return;
       const gate = document.getElementById("authGate");
       const notice = document.getElementById("setupNotice");
       if (gate) {
