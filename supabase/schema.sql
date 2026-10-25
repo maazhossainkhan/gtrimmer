@@ -42,3 +42,8 @@ comment on table public.gtrimmer_access_users is
   'Private allowlist for Google Trim by Shadow. Access is keyed by verified Telegram numeric account ID.';
 comment on table public.gtrimmer_access_requests is
   'Pending access requests created only after a Telegram OIDC ID token is verified server-side.';
+
+-- Explicitly grant the server-side service role table privileges.
+-- RLS remains enabled; browser roles have no policies or table grants.
+grant all on table public.gtrimmer_access_users to service_role;
+grant all on table public.gtrimmer_access_requests to service_role;
