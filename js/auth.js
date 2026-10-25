@@ -64,7 +64,7 @@
     const body = Object.assign({ action: action }, payload || {});
     if (miniAppMode) {
       const config = getConfig();
-      const response = await fetch(config.supabaseUrl.replace(/\\/$/, "") + "/functions/v1/telegram-mini-auth", {
+      const response = await fetch(config.supabaseUrl.replace(/\/$/, "") + "/functions/v1/telegram-mini-auth", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
