@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b14">
-  <meta name="description" content="Google Trim by Shadow — invite-approved Google Share URL converter.">
+  <meta name="description" content="Google Trim by Shadow — admin-approved Google Share URL converter.">
   <title>Google Trim by Shadow — Share URL Converter</title>
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/supabase-config.js" defer></script>
   <script src="js/auth.js" defer></script>
   <script src="js/app.js" defer></script>
@@ -29,7 +30,7 @@
     <div class="setup-icon" aria-hidden="true">⚙</div>
     <div>
       <h1 id="setupTitle">Secure access setup required</h1>
-      <p>This site is locked until Telegram authentication and server-side access checks are configured. Add the public Supabase project URL, public key, and Telegram Client ID to <code>js/supabase-config.js</code>, then follow <a href="https://github.com/maazhossainkhan/gtrimmer#telegram-login-and-access-control-setup" target="_blank" rel="noopener noreferrer">the setup guide</a>. Never add the Telegram Client Secret or Supabase service-role key to this repository.</p>
+      <p>This site is locked until Supabase Auth, Telegram as a custom OIDC provider, and server-side access checks are configured. Add the public Supabase project URL and publishable key to <code>js/supabase-config.js</code>, then follow <a href="https://github.com/maazhossainkhan/gtrimmer#telegram-login-and-access-control-setup" target="_blank" rel="noopener noreferrer">the setup guide</a>. Never add the Telegram Client Secret or Supabase service-role key to this repository.</p>
     </div>
   </section>
 
