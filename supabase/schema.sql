@@ -1,3 +1,27 @@
+-- If an earlier prototype schema exists, drop it only when empty.
+-- Never delete existing access records silently; a populated old schema requires a manual migration.
+do $$
+declare
+  has_user_rows boolean := false;
+  has_request_rows boolean := false;
+begin
+  if to_regclass('public.gtrimmer_access_users') is not null
+     and not exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'gtrimmer_access_users' and column_name = 'user_id'
+     ) then
+    execute 'select exists(select 1 from public.gtrimmer_access_users limit 1)' into has_user_rows;
+    if to_regclass('public.gtrimmer_access_requests') is not null then
+      execute 'select exists(select 1 from public.gtrimmer_access_requests limit 1)' into has_request_rows;
+    end if;
+    if has_user_rows or has_request_rows then
+      raise exception 'An older access-control schema contains rows. Back up and migrate those records manually before running this current schema.';
+    end if;
+    drop table if exists public.gtrimmer_access_requests;
+    drop table if exists public.gtrimmer_access_users;
+  end if;
+end $$;
+
 -- Google Trim by Shadow: admin-approved Telegram access control.
 -- Run this in Supabase SQL Editor for a fresh project before deploying the function.
 -- Browser roles have no access; access checks go through the validated Edge Function.
