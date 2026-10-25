@@ -5,3 +5,7 @@ verify_jwt = true
 [functions.telegram-bot]
 # Telegram calls this webhook without a Supabase user JWT; the function verifies Telegram's webhook secret header.
 verify_jwt = false
+
+[functions.telegram-mini-auth]
+# Telegram initData is verified inside the function using the bot token; the function cannot require a Supabase user JWT.
+verify_jwt = false
