@@ -1,10 +1,10 @@
 # Google Trim by Shadow
 
-A responsive Google Share URL-format converter using the Shadow Shortner-inspired navy/violet theme. The converter is gated behind Telegram sign-in through Supabase Auth and an administrator approval system.
+An original graphite-and-jade interface for transforming supported Google Share URL formats. Converter access is tied to verified Telegram identity and server-enforced administrator approval.
 
 ## Included
 
-- Responsive navy, violet and blue interface inspired by the Shadow Shortner visual theme
+- Responsive Emberglass visual identity: graphite surfaces, jade accents, warm-copper details, and original product copy
 - Telegram OpenID Connect configured as Supabase Auth's custom provider `custom:telegram`
 - Access requests tied to the Supabase Auth user created through verified Telegram sign-in, displaying the Telegram username when available
 - Admin dashboard to approve/reject, revoke and restore access
