@@ -155,6 +155,66 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
     }
     return { success: true, requests, users };
   }
+  if (action === "clear-revoked") {
+    const [
+      { data: legacyRevoked, error: legacyRevokedError },
+      { data: miniRevoked, error: miniRevokedError },
+      { data: legacyActive, error: legacyActiveError },
+      { data: miniActive, error: miniActiveError }
+    ] = await Promise.all([
+      db!.from("gtrimmer_access_users").select("user_id, telegram_id").eq("status", "revoked").eq("is_admin", false),
+      db!.from("gtrimmer_mini_access_users").select("telegram_id").eq("status", "revoked").eq("is_admin", false),
+      db!.from("gtrimmer_access_users").select("telegram_id").eq("status", "active"),
+      db!.from("gtrimmer_mini_access_users").select("telegram_id").eq("status", "active")
+    ]);
+    if (legacyRevokedError || miniRevokedError || legacyActiveError || miniActiveError) {
+      throw new HttpError("Could not prepare the revoked-account cleanup. No entries were deleted.", 500);
+    }
+    const activeIds = new Set<string>([
+      ...(legacyActive ?? []).map((row: any) => String(row.telegram_id ?? "")),
+      ...(miniActive ?? []).map((row: any) => String(row.telegram_id ?? ""))
+    ].filter(Boolean));
+    const skippedIds = new Set<string>();
+    const legacyDeleteIds: string[] = [];
+    const miniDeleteIds: string[] = [];
+    for (const row of legacyRevoked ?? []) {
+      const telegramId = String(row.telegram_id ?? "");
+      if (telegramId && activeIds.has(telegramId)) {
+        skippedIds.add(telegramId);
+      } else {
+        legacyDeleteIds.push(String(row.user_id));
+      }
+    }
+    for (const row of miniRevoked ?? []) {
+      const telegramId = String(row.telegram_id ?? "");
+      if (activeIds.has(telegramId)) {
+        skippedIds.add(telegramId);
+      } else {
+        miniDeleteIds.push(telegramId);
+      }
+    }
+    const removedKeys = new Set<string>();
+    if (legacyDeleteIds.length) {
+      const { data, error } = await db!.from("gtrimmer_access_users").delete()
+        .in("user_id", legacyDeleteIds).eq("status", "revoked").eq("is_admin", false)
+        .select("user_id, telegram_id");
+      if (error) throw new HttpError("Could not clear revoked OIDC accounts.", 500);
+      for (const row of data ?? []) removedKeys.add(String(row.telegram_id || ("legacy:" + row.user_id)));
+    }
+    if (miniDeleteIds.length) {
+      const { data, error } = await db!.from("gtrimmer_mini_access_users").delete()
+        .in("telegram_id", miniDeleteIds).eq("status", "revoked").eq("is_admin", false)
+        .select("telegram_id");
+      if (error) throw new HttpError("Could not clear revoked Mini App accounts.", 500);
+      for (const row of data ?? []) removedKeys.add(String(row.telegram_id));
+    }
+    return {
+      success: true,
+      cleared_count: removedKeys.size,
+      skipped_count: skippedIds.size,
+      message: "Cleared " + removedKeys.size + " revoked account entr" + (removedKeys.size === 1 ? "y" : "ies") + "."
+    };
+  }
   const targetId = typeof body.user_id === "string" ? body.user_id.trim().toLowerCase() : "";
   if (targetId.startsWith("tg:")) {
     const targetTelegramId = targetId.slice(3);
