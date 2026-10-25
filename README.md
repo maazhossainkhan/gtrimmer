@@ -96,19 +96,19 @@ Open [GitHub Pages Settings](https://github.com/maazhossainkhan/gtrimmer/setting
 5. Each conversion requires a valid Supabase Auth JWT and a current active database row.
 6. Admins can revoke/restore non-admin users. Revocation blocks the next conversion request.
 
-## 7. Telegram Mini App (@gtrimmerbot)
+## 8. Telegram Mini App authentication and access approvals
 
-The website can open inside Telegram as a Mini App. The bot sends an **Open Google Trim** button to https://turlx.com; the existing Telegram OIDC sign-in and server-side approval flow remain the source of access decisions. Opening the Mini App does **not** grant converter access by itself.
+When opened inside Telegram, the frontend now uses `Telegram.WebApp.initData` instead of launching the OIDC page inside Telegram's webview. The new `telegram-mini-auth` Edge Function verifies Telegram's HMAC signature and `auth_date` on the server before processing any action. `initDataUnsafe` is not used for authorization.
 
-1. In Supabase Edge Function secrets, set `TELEGRAM_BOT_TOKEN` (from @BotFather) and `TELEGRAM_WEBHOOK_SECRET` (a random 32–64 character secret using letters, numbers, `_`, or `-`). Keep both server-side only.
-2. Deploy `supabase/functions/telegram-bot/index.ts` as a function named `telegram-bot`. This webhook has `verify_jwt = false` because Telegram does not send Supabase JWTs; the function checks Telegram's `X-Telegram-Bot-Api-Secret-Token` header.
-3. Register the webhook once using this URL after replacing the placeholders (do not share the URL or token):
-   `https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://uujilkamhixduorkflup.supabase.co/functions/v1/telegram-bot&secret_token=<TELEGRAM_WEBHOOK_SECRET>`
-   Telegram should return `ok: true` and `result: true`.
-4. In Telegram, send `/start` to [@gtrimmerbot](https://t.me/gtrimmerbot). It should reply with an **Open Google Trim** Mini App button. Optionally configure BotFather's menu button to open `https://turlx.com`.
-5. Test both an approved and an unapproved Telegram account. An unapproved account must still see the request-access screen; only admin approval enables conversion.
+### Required one-time setup
 
-The Mini App bootstrap calls `Telegram.WebApp.ready()` and `expand()` when available. Telegram client data is not treated as authentication; do not trust `initDataUnsafe` for authorization. Existing access checks still validate the Supabase Auth session and database approval on every conversion.
+1. In Supabase **SQL Editor**, run the complete file `supabase/telegram-mini-app-schema.sql`. This adds two Mini App tables and does not drop or overwrite the existing OIDC approval records.
+2. In Supabase **Edge Functions → Secrets**, ensure `TELEGRAM_BOT_TOKEN` contains the current, valid BotFather token. Never place it in GitHub or the browser. If the token was rotated, update this secret to the new token.
+3. Deploy `supabase/functions/telegram-mini-auth/index.ts` as an Edge Function named `telegram-mini-auth`. The function's `verify_jwt` setting is `false` because Telegram does not issue Supabase JWTs for Mini Apps; the code itself validates signed Telegram `initData` and all database authorization. Keep the secret bot token configured.
+4. If your current OIDC administrator record already contains your numeric Telegram ID, the Mini App can reuse that admin role. Otherwise set the server-side secret `ADMIN_TELEGRAM_IDS` to your own numeric Telegram ID (digits only; comma-separated for multiple admins). Do not use your username, and do not share the ID with the bot token.
+5. Reload `https://turlx.com` inside Telegram and test `/start` → **Open Google Trim**. A new user should see **Request converter access**; after approval the converter should work. Check that a revoked user is denied on the next conversion.
+
+The Mini App uses the same legacy access records whenever a matching verified Telegram ID already exists, so existing OIDC approvals, admin roles, and revocations are retained. New Mini App-only requests are stored in the new tables and can be approved/rejected/revoked/restored from the admin screen. Every conversion is rechecked by the server.
 
 ## Files
 
