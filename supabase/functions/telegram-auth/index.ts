@@ -324,7 +324,7 @@ Deno.serve(async (req: Request) => {
       if (!tokenResponse.ok || typeof tokenData.id_token !== "string") {
         throw new HttpError("Telegram could not exchange this sign-in code. Start the login again.", 401);
       }
-      const verified = await verifyTelegramIdToken(tokenData.id_token, nonce);
+      await verifyTelegramIdToken(tokenData.id_token, nonce);
       const verifiedToken = await jwtVerify(tokenData.id_token, TELEGRAM_JWKS, {
         issuer: TELEGRAM_ISSUER,
         audience: TELEGRAM_CLIENT_ID,
