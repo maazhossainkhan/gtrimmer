@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070708">
+  <meta name="description" content="Google Trim by Shadow — a simple, privacy-friendly Google Share URL format converter.">
+  <title>Google Trim by Shadow — Google Share URL Converter</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/converter.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-line" aria-hidden="true"></div>
+  <div class="ambient ambient-glow" aria-hidden="true"></div>
+  <div class="checker" aria-hidden="true"></div>
+
+  <main class="page-shell">
+    <section class="converter-card" aria-labelledby="brandTitle">
+      <div class="top-rule" aria-hidden="true"></div>
+      <div class="system-label"><span class="status-dot" aria-hidden="true"></span> Link Conversion System</div>
+      <h1 class="brand" id="brandTitle"><span class="brand-main">Google Trim</span><span class="brand-accent">by Shadow</span></h1>
+      <p class="subtitle">Convert a Google Share link into the share-handler URL format.</p>
+      <form id="conversionForm" novalidate>
+        <label class="field-label" for="shareUrl">Google Share URL</label>
+        <div class="input-wrap">
+          <input id="shareUrl" name="shareUrl" type="url" inputmode="url" autocomplete="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://share.google/yourShareToken" aria-describedby="inputHint errorMessage" required>
+        </div>
+        <p class="input-hint" id="inputHint">Paste a link from <span>share.google</span>.</p>
+        <button class="convert-button" id="convertButton" type="submit"><span>Convert URL</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+        <p class="error-message" id="errorMessage" role="alert" aria-live="polite"></p>
+      </form>
+      <section class="result-box" id="resultBox" aria-labelledby="resultTitle" hidden>
+        <div class="result-heading-row"><h2 class="result-title" id="resultTitle">Converted URL</h2><span class="result-status"><span aria-hidden="true">●</span> Ready</span></div>
+        <output class="result-output" id="resultOutput" aria-live="polite"></output>
+        <div class="result-actions">
+          <button class="copy-button" id="copyButton" type="button"><span class="copy-icon" aria-hidden="true">▢</span><span id="copyButtonText">Copy URL</span></button>
+          <button class="reset-button" id="resetButton" type="button">Clear</button>
+        </div>
+        <p class="copy-feedback" id="copyFeedback" role="status" aria-live="polite"></p>
+      </section>
+      <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">◈</span><p>Runs locally in your browser. Your input is not sent to a server by this page.</p></div>
+      <footer class="footer" aria-label="Workflow"><span>Validate</span><i aria-hidden="true"></i><span>Convert</span><i aria-hidden="true"></i><span>Copy</span></footer>
+    </section>
+    <p class="page-note">This tool reformats the share token. It does not resolve the original destination or verify link safety.</p>
+  </main>
+</body>
+</html>
