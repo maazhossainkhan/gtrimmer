@@ -18,10 +18,8 @@
   let feedbackTimer = null;
 
   function clearFeedback() {
-    if (feedbackTimer !== null) {
-      window.clearTimeout(feedbackTimer);
-      feedbackTimer = null;
-    }
+    if (feedbackTimer !== null) window.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
     copyButtonText.textContent = "Copy URL";
     copyFeedback.textContent = "";
     copyFeedback.style.color = "";
@@ -37,11 +35,9 @@
   async function handleConvert(event) {
     event.preventDefault();
     errorMessage.textContent = "";
-    copyFeedback.textContent = "";
     clearFeedback();
     convertButton.disabled = true;
-    convertButton.querySelector("span").textContent = "Validating access…";
-
+    convertButton.querySelector("span").textContent = "Checking access…";
     try {
       const converted = await window.GTrimAuth.convertShareUrl(input.value);
       lastConvertedUrl = converted.url;
@@ -50,7 +46,7 @@
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to convert this URL. Please try again.";
       showError(message);
-      if (/access|authorized|sign in|session|jwt|token/i.test(message) && window.GTrimAuth) {
+      if (/access|authorized|sign in|session|token|expired/i.test(message) && window.GTrimAuth) {
         await window.GTrimAuth.refreshAccess();
       }
     } finally {
@@ -61,12 +57,7 @@
 
   async function copyWithFallback(value) {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      try {
-        await navigator.clipboard.writeText(value);
-        return true;
-      } catch (_error) {
-        // Clipboard permission may be blocked; try the legacy fallback below.
-      }
+      try { await navigator.clipboard.writeText(value); return true; } catch (_error) {}
     }
     const temporaryInput = document.createElement("textarea");
     temporaryInput.value = value;
