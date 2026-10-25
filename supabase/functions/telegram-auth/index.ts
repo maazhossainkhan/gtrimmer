@@ -166,7 +166,7 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
       if (action === "approve") {
         const { error } = await db!.from("gtrimmer_mini_access_users").upsert({
           telegram_id: targetTelegramId, username: request.username, display_name: request.display_name,
-          status: "active", is_admin: ADMIN_USER_IDS.has(identity.user_id.toLowerCase()), updated_at: new Date().toISOString()
+          status: "active", is_admin: ADMIN_TELEGRAM_IDS.has(targetTelegramId), updated_at: new Date().toISOString()
         }, { onConflict: "telegram_id" });
         if (error) throw new HttpError("Could not approve this Telegram account.", 500);
       }
