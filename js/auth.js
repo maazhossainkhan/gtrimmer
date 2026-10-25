@@ -57,9 +57,32 @@
     identityChip.hidden = !user;
     identityText.textContent = user ? usernameLabel(user) : "";
   }
+  let miniAppMode = false;
+  let miniInitData = "";
+
   async function invokeServer(action, payload) {
-    if (!client) throw new Error("Supabase Auth is not configured.");
     const body = Object.assign({ action: action }, payload || {});
+    if (miniAppMode) {
+      const config = getConfig();
+      const response = await fetch(config.supabaseUrl.replace(/\\/$/, "") + "/functions/v1/telegram-mini-auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": config.publishableKey,
+          "Authorization": "Bearer " + config.publishableKey,
+          "x-telegram-init-data": miniInitData
+        },
+        cache: "no-store",
+        body: JSON.stringify(body)
+      });
+      let data = null;
+      try { data = await response.json(); } catch (_error) {}
+      if (!response.ok || !data || data.success === false) {
+        throw new Error((data && data.message) || "The secure Mini App service could not complete the request.");
+      }
+      return data;
+    }
+    if (!client) throw new Error("Supabase Auth is not configured.");
     const { data, error } = await client.functions.invoke("telegram-auth", { body });
     if (error) {
       let message = error.message || "The secure service could not complete the request.";
@@ -274,6 +297,86 @@
       finishReady(currentAccess);
     }
   }
+  async function initializeMiniApp() {
+    miniAppMode = true;
+    const telegram = window.Telegram && window.Telegram.WebApp;
+    miniInitData = telegram && typeof telegram.initData === "string" ? telegram.initData : "";
+    signInButton.hidden = true;
+    signOutButton.hidden = true;
+    setGate("Verifying your Telegram Mini App identity…", "");
+    signInButton.hidden = true;
+    requestAccessButton.hidden = true;
+    if (!miniInitData) {
+      setGate("Telegram did not provide signed login data. Close this window and reopen Google Trim using the button in @gtrimmerbot.", "error");
+      signInButton.hidden = true;
+      finishReady({ authorized: false, isAdmin: false });
+      return;
+    }
+
+    requestAccessButton.addEventListener("click", async function () {
+      requestAccessButton.disabled = true;
+      requestAccessButton.textContent = "Submitting…";
+      try {
+        const result = await invokeServer("request-access", {});
+        setAuthFeedback(result.message || "Access request submitted.", "success");
+        await loadMiniAppState();
+      } catch (error) {
+        setAuthFeedback(error.message, "error");
+      } finally {
+        requestAccessButton.disabled = false;
+        requestAccessButton.textContent = "Request converter access";
+      }
+    });
+    adminRefreshButton.addEventListener("click", refreshAdminLists);
+    await loadMiniAppState();
+  }
+
+  async function loadMiniAppState() {
+    setGate("Verifying your Telegram Mini App identity…", "");
+    signInButton.hidden = true;
+    signOutButton.hidden = true;
+    requestAccessButton.hidden = true;
+    try {
+      const data = await invokeServer("access-state", {});
+      currentUser = data.user || null;
+      setIdentity(currentUser);
+      currentAccess = {
+        authorized: data.state === "active" || data.state === "admin",
+        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin),
+        userId: data.user && data.user.user_id
+      };
+      if (data.state === "active" || data.state === "admin") {
+        setupNotice.hidden = true;
+        authGate.hidden = true;
+        appShell.hidden = false;
+        adminPanel.hidden = !currentAccess.isAdmin;
+        if (currentAccess.isAdmin) await refreshAdminLists();
+      } else {
+        setupNotice.hidden = true;
+        appShell.hidden = true;
+        authGate.hidden = false;
+        signInButton.hidden = true;
+        requestAccessButton.hidden = !(data.state === "needs_request" || data.state === "rejected");
+        if (data.state === "pending") {
+          setAuthFeedback("Your request is pending. The administrator will review " + usernameLabel(currentUser) + ".", "");
+        } else if (data.state === "revoked") {
+          setAuthFeedback("Access for " + usernameLabel(currentUser) + " has been revoked. Contact the administrator if this is a mistake.", "error");
+        } else if (data.state === "rejected") {
+          setAuthFeedback("Your previous request was declined. You may submit another request.", "error");
+        } else {
+          setAuthFeedback("Verified as " + usernameLabel(currentUser) + ". Request admin approval to enable the converter.", "");
+        }
+      }
+      finishReady(currentAccess);
+    } catch (error) {
+      currentAccess = { authorized: false, isAdmin: false };
+      setGate(error.message || "Could not verify your Telegram identity.", "error");
+      signInButton.hidden = true;
+      requestAccessButton.hidden = true;
+      finishReady(currentAccess);
+    }
+  }
+
   async function initialize() {
     const config = getConfig();
     if (!window.supabase || !config.supabaseUrl || !config.publishableKey ||
@@ -283,6 +386,11 @@
       appShell.hidden = true;
       signOutButton.hidden = true;
       finishReady({ authorized: false, isAdmin: false });
+      return;
+    }
+    const telegramWebApp = window.Telegram && window.Telegram.WebApp;
+    if (telegramWebApp) {
+      await initializeMiniApp();
       return;
     }
     client = window.supabase.createClient(config.supabaseUrl, config.publishableKey, {
