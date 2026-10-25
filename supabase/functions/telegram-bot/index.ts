@@ -118,6 +118,36 @@ async function getAccessState(telegramId: string): Promise<AccessState> {
   if (request?.status === "rejected") return { state: "rejected", username: request.username };
   return { state: "needs_request", username: request?.username ?? null };
 }
+async function notifyAdminsOfRequest(telegramUser: TelegramUser) {
+  // Notify active Mini App admins; failures do not undo a valid access request.
+  const { data, error } = await db!.from("gtrimmer_mini_access_users")
+    .select("telegram_id").eq("status", "active").eq("is_admin", true).limit(50);
+  if (error) {
+    console.warn("Could not find active Mini App admins to notify.");
+    return;
+  }
+  const requester = displayName(telegramUser);
+  const telegramId = String(telegramUser.id);
+  for (const admin of data ?? []) {
+    const adminId = String(admin.telegram_id ?? "");
+    if (!/^\\d{1,20}$/.test(adminId) || adminId === telegramId) continue;
+    try {
+      await telegramApi("sendMessage", {
+        chat_id: Number(adminId),
+        text: "🔔 New Google Trim access request\\n\\nFrom: " + requester + "\\nTelegram ID: " + telegramId +
+          "\\n\\nOpen the Admin dashboard to approve or reject this request.",
+        reply_markup: {
+          inline_keyboard: [[{ text: "Review access request", web_app: { url: MINI_APP_URL } }]]
+        },
+        disable_web_page_preview: true
+      });
+    } catch (notifyError) {
+      // User might not have started the bot yet; do not fail the request for this.
+      console.warn("Could not notify one Mini App administrator:", notifyError instanceof Error ? notifyError.message : "unknown error");
+    }
+  }
+}
+
 async function requestAccess(telegramUser: TelegramUser): Promise<"active" | "pending" | "revoked" | "submitted"> {
   const telegramId = String(telegramUser.id);
   const state = await getAccessState(telegramId);
@@ -136,6 +166,7 @@ async function requestAccess(telegramUser: TelegramUser): Promise<"active" | "pe
     reviewed_by_telegram_id: null
   }, { onConflict: "telegram_id" });
   if (error) throw new Error("Could not submit access request.");
+  await notifyAdminsOfRequest(telegramUser);
   return "submitted";
 }
 async function configureTelegramMenu(chatId: number) {
