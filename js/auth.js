@@ -189,7 +189,7 @@
       users.forEach(function (user) {
         const username = user.username ? "@" + String(user.username).replace(/^@/, "") : (user.display_name || "Telegram user");
         const active = user.status === "active";
-        const isSelf = currentUser && String(user.user_id) === String(currentUser.user_id);
+        const isSelf = currentUser && (String(user.user_id) === String(currentUser.user_id) || (user.telegram_id && currentUser.telegram_id && String(user.telegram_id) === String(currentUser.telegram_id)));
         const canChange = !user.is_admin && !isSelf;
         const meta = (user.telegram_id ? "Telegram ID " + user.telegram_id + " · " : "") +
           "Supabase user " + user.user_id + " · " + (user.is_admin ? "Administrator" : (active ? "Authorized" : "Access revoked"));
@@ -379,7 +379,7 @@
 
   async function initialize() {
     const config = getConfig();
-    if (!window.supabase || !config.supabaseUrl || !config.publishableKey ||
+    if (!config.supabaseUrl || !config.publishableKey ||
         config.supabaseUrl.includes("YOUR_PROJECT_REF") || config.publishableKey.includes("YOUR_SUPABASE")) {
       setupNotice.hidden = false;
       authGate.hidden = true;
@@ -391,6 +391,14 @@
     const telegramWebApp = window.Telegram && window.Telegram.WebApp;
     if (telegramWebApp) {
       await initializeMiniApp();
+      return;
+    }
+    if (!window.supabase) {
+      setupNotice.hidden = false;
+      authGate.hidden = true;
+      appShell.hidden = true;
+      signOutButton.hidden = true;
+      finishReady({ authorized: false, isAdmin: false });
       return;
     }
     client = window.supabase.createClient(config.supabaseUrl, config.publishableKey, {
