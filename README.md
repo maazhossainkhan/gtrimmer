@@ -130,3 +130,16 @@ The Mini App uses the same legacy access records whenever a matching verified Te
 ## Converter behavior
 
 The converter preserves the original output format: it extracts the first non-empty path segment of a `share.google` URL and builds `https://www.google.com/share.google?q=TOKEN`. It does not resolve the original destination or prove that Google will accept the generated URL.
+
+## 10. Telegram bot buttons and direct conversion
+
+The `telegram-bot` Edge Function now provides a persistent private-chat keyboard through `@gtrimmerbot`:
+
+- **Open Google Trim** — opens `https://turlx.com/` as a Telegram Mini App.
+- **Convert Link** — asks the user for a share.google URL; the user can also paste a share.google URL at any time.
+- **My Access** — reports Admin, approved, pending, rejected, revoked, or not-yet-requested status.
+- **Request Access** — creates a Mini App access request for an unapproved Telegram ID.
+- **Help** — explains the commands and workflow.
+
+Commands are registered when a user sends `/start`: `/start`, `/app`, `/convert`, `/access`, `/request`, and `/help`. The menu button is set to **Open Google Trim**. Direct message conversion is restricted to private chats and checks current approval in the legacy or Mini App access tables before returning the same converted URL as the Mini App. The Telegram webhook continues using the existing `TELEGRAM_WEBHOOK_SECRET` and `TELEGRAM_BOT_TOKEN` secrets; never publish either value.
+
