@@ -29,7 +29,7 @@
   <script src="js/telegram-mini-app.js?v=miniapp-ui-2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/supabase-config.js" defer></script>
-  <script src="js/auth.js?v=miniapp-auth-3" defer></script>
+  <script src="js/auth.js?v=miniapp-auth-4" defer></script>
   <script src="js/app.js" defer></script>
 </head>
 <body>
@@ -85,15 +85,21 @@
         <button class="secondary-button" id="adminRefreshButton" type="button">Refresh list</button>
       </div>
       <p class="admin-feedback" id="adminFeedback" role="status" aria-live="polite"></p>
-      <div class="admin-lists">
-        <section class="admin-list-section">
-          <div class="admin-list-heading"><h3>Pending access requests</h3><span id="pendingCount">0</span></div>
+      <div class="admin-lists admin-dropdowns">
+        <details class="admin-list-section admin-dropdown" id="pendingAccessDropdown">
+          <summary class="admin-list-heading">
+            <span class="admin-summary-title"><span class="admin-chevron" aria-hidden="true">⌄</span><h3>Pending access requests</h3></span>
+            <span class="admin-count" id="pendingCount">0</span>
+          </summary>
           <div class="admin-list" id="pendingRequestsList"><p class="list-empty">Loading requests…</p></div>
-        </section>
-        <section class="admin-list-section">
-          <div class="admin-list-heading"><h3>Authorized accounts</h3><span id="authorizedCount">0</span></div>
+        </details>
+        <details class="admin-list-section admin-dropdown" id="authorizedAccessDropdown">
+          <summary class="admin-list-heading">
+            <span class="admin-summary-title"><span class="admin-chevron" aria-hidden="true">⌄</span><h3>Authorized accounts</h3></span>
+            <span class="admin-count" id="authorizedCount">0</span>
+          </summary>
           <div class="admin-list" id="activeUsersList"><p class="list-empty">Loading accounts…</p></div>
-        </section>
+        </details>
       </div>
     </section>
 
