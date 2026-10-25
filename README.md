@@ -1,100 +1,105 @@
 # Google Trim by Shadow
 
-A responsive Google Share URL-format converter using the Shadow Shortner-inspired navy/violet theme. The application is intended to be **admin-approved** and keeps the conversion endpoint behind server-side authorization.
+A responsive Google Share URL-format converter using the Shadow Shortner-inspired navy/violet theme. The converter is gated behind Telegram sign-in through Supabase Auth and an administrator approval system.
 
 ## Included
 
 - Responsive navy, violet and blue interface inspired by the Shadow Shortner visual theme
-- Telegram OpenID Connect sign-in (verified server-side)
-- Access requests tied to a verified Telegram account ID; the administrator approves/rejects requests by the displayed Telegram username
-- Admin dashboard to view pending requests, approve/reject, revoke and restore user access
-- Every conversion request is authenticated and re-authorized on the server
-- Supabase tables protected by RLS with no direct browser-role grants
-- Public-only browser config placeholder; secrets belong in Supabase function secrets
-- Existing GitHub Pages custom domain is preserved in `CNAME` as `turlx.com`
+- Telegram OpenID Connect configured as Supabase Auth's custom provider `custom:telegram`
+- Access requests tied to the Supabase Auth user created through verified Telegram sign-in, displaying the Telegram username when available
+- Admin dashboard to approve/reject, revoke and restore access
+- Every conversion request requires a valid Supabase Auth session and is re-authorized against the database on the server
+- RLS-protected access-control tables with no direct browser-role grants
+- No secrets committed to this repository
+- GitHub Pages custom domain `turlx.com` remains in `CNAME`
 
 ## Important
 
-**The code is committed, but authentication will not work until the external Supabase and Telegram settings below are completed.** Do not add the Telegram Client Secret or Supabase service-role/secret key to this public GitHub repository.
+**The source code is committed, but login will not work until you configure Supabase Auth and deploy the Edge Function.** No Telegram Client Secret or Supabase service-role key belongs in this GitHub repository.
 
-This implementation uses a Telegram username for human-readable display, but saves approval against Telegram's signed numeric account ID. A username typed into a form is not identity proof and can change.
+The admin dashboard shows Telegram usernames for convenience, but permission is tied to the authenticated Supabase user ID linked to Telegram, not to a username typed into a form.
 
-## 1. Create/configure a Supabase project
+## 1. Configure Supabase Auth and Telegram
 
 1. Create a project at [Supabase](https://supabase.com/dashboard).
-2. In **SQL Editor**, run the full contents of [`supabase/schema.sql`](supabase/schema.sql).
-3. Copy the project URL and the public publishable key (or legacy anon key). Edit `js/supabase-config.js`:
-   - `supabaseUrl`: `https://YOUR_PROJECT_REF.supabase.co`
-   - `publishableKey`: your public publishable/anon key
-   - `telegramClientId`: the Telegram Login Client ID
-   - `telegramRedirectUri`: exactly `https://turlx.com/auth/callback.html`
-4. Commit that config file. Only the Supabase public key belongs in it; this is not the place for any secret key.
+2. Open **Authentication → Sign In / Providers** (sometimes labelled Auth Providers) and add a **Custom OAuth/OIDC** provider:
+   - Identifier: `custom:telegram`
+   - Name: `Telegram`
+   - Provider type: OIDC / auto-discovery
+   - Issuer URL: `https://oauth.telegram.org`
+   - Scopes: `openid profile`
+   - Email optional: enabled/true (Telegram does not provide an email by default)
+3. Copy the callback URL shown by Supabase for this provider. It normally looks like:
+   `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
+4. In Supabase **Authentication → URL Configuration**, set Site URL to `https://turlx.com` and allow `https://turlx.com/**` as a redirect URL.
+5. In `js/supabase-config.js`, fill in the Supabase project URL and public publishable (or legacy anon) key. These two values are meant for browser use; never put a secret key there.
 
-The tables `gtrimmer_access_users` and `gtrimmer_access_requests` have RLS enabled and no policies for browser roles. Only the Edge Function's server-side service-role client reads or writes them.
+Official guide: [Supabase Custom OAuth/OIDC providers](https://supabase.com/docs/guides/auth/custom-oauth-providers).
 
-## 2. Set up Telegram Login
+## 2. Configure the Telegram bot
 
-1. Open Telegram and create/select the bot that will represent Google Trim by Shadow using [@BotFather](https://t.me/BotFather).
-2. Open the bot's **Login Widget** settings in BotFather and register allowed origin(s):
-   - `https://turlx.com`
-   - `https://www.turlx.com`
-3. Register the redirect URI exactly as `https://turlx.com/auth/callback.html`.
-4. Copy the Telegram Login Client ID and Client Secret shown by BotFather. The Client ID is public and goes in `js/supabase-config.js`; the Client Secret stays in Supabase secrets.
+1. Create/select a bot using [@BotFather](https://t.me/BotFather).
+2. Open the bot's **Login Widget / OpenID Connect Login** settings.
+3. Add the exact Supabase callback URL from step 1, for example `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`.
+4. Copy the Telegram Client ID and Client Secret into the Supabase Auth custom-provider settings. Do not commit the client secret to GitHub.
 
-Official docs: [Telegram Login / OpenID Connect](https://core.telegram.org/bots/telegram-login).
+Official guide: [Telegram Login / OIDC](https://core.telegram.org/bots/telegram-login).
 
-## 3. Set server-side secrets and deploy the Edge Function
+## 3. Create the access-control tables
 
-Install the Supabase CLI, then from the repository root run:
+In Supabase **SQL Editor**, run the complete contents of `supabase/schema.sql`.
+
+The `gtrimmer_access_users` and `gtrimmer_access_requests` tables have RLS enabled and no grants for browser roles. The Edge Function uses the server-side service-role key to read/write these records.
+
+## 4. Deploy the protected Edge Function
+
+Install the Supabase CLI, then run these commands from the repository root:
 
 ```bash
 supabase login
 supabase link --project-ref YOUR_PROJECT_REF
-supabase secrets set TELEGRAM_CLIENT_ID="YOUR_TELEGRAM_CLIENT_ID" TELEGRAM_CLIENT_SECRET="YOUR_TELEGRAM_CLIENT_SECRET" TELEGRAM_REDIRECT_URI="https://turlx.com/auth/callback.html" ADMIN_TELEGRAM_IDS="YOUR_NUMERIC_TELEGRAM_ID"
+supabase secrets set ADMIN_USER_IDS="YOUR_SUPABASE_AUTH_USER_UUID"
 supabase functions deploy telegram-auth
 ```
 
-Supabase normally provides `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions automatically. If your project/runtime does not provide them, set these server-side in Supabase Functions secrets; never commit them.
+Supabase normally makes `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` available to Edge Functions automatically. If your runtime does not provide them, add them as server-side function secrets. Never commit either value to GitHub.
 
-### Initial administrator
+### Configure the first administrator
 
-- Set `ADMIN_TELEGRAM_IDS` to the numeric Telegram account ID of the site owner/admin (comma-separated if there is more than one).
-- Find your Telegram numeric ID using a trusted method. Do not use a username as a substitute for this bootstrap allowlist.
-- The first time that account signs in, the function bootstraps it as an administrator. Keep this ID in the server secret to retain bootstrap-admin status. Do not set it to anyone you do not trust.
+1. After the provider is set up, open `https://turlx.com` and click **Continue with Telegram**.
+2. The first login creates a Supabase Auth user. Submit an access request.
+3. In Supabase **Authentication → Users**, copy the UUID of your own Telegram-authenticated account.
+4. Set `ADMIN_USER_IDS` to that UUID (comma-separated for multiple administrators), then redeploy `telegram-auth`.
+5. Sign in again. That account will be promoted to administrator and can approve/reject requests.
 
-The Edge Function validates Telegram's signed ID token with Telegram's JWKS, checks issuer/audience/expiry/nonce, and only then trusts the identity. The function uses `verify_jwt = false` because Telegram ID tokens are not Supabase Auth JWTs; the function performs its own verification for every action.
+Using the Supabase user UUID for initial administrator setup is safer than trusting a username, which can change.
 
-## 4. Publish with GitHub Pages
+## 5. GitHub Pages and HTTPS
 
-GitHub Pages is configured to publish from `main` at `/(root)`. Keep the repository's `CNAME` file containing `turlx.com`.
+GitHub Pages publishes from `main` at `/(root)`. Keep `CNAME` set to `turlx.com`.
 
-The custom-domain certificate and DNS are configured separately. Open [GitHub Pages Settings](https://github.com/maazhossainkhan/gtrimmer/settings/pages), confirm DNS success and enable **Enforce HTTPS** after the certificate is issued. Telegram sign-in must use HTTPS.
+Open [GitHub Pages Settings](https://github.com/maazhossainkhan/gtrimmer/settings/pages), confirm DNS success, and enable **Enforce HTTPS** after the certificate is issued. Telegram sign-in must use HTTPS.
 
-## 5. How access works
+## 6. Access behavior
 
-1. A user clicks **Continue with Telegram** and completes Telegram's official sign-in.
-2. The backend validates the ID token. If the account is not already approved, the user can submit an access request.
-3. The admin signs in using the configured Telegram account. The dashboard lists pending requests with `@username` (if available) and the Telegram numeric ID.
-4. The admin approves or rejects a request. Approval is tied to the verified Telegram numeric ID, not a username string typed by the user.
-5. Every conversion call re-validates the Telegram token and checks the user's current `active` status in the database.
-6. Admin can revoke or restore a non-admin user. Revocation takes effect on the next conversion request.
-
-An ID token expires. If a session stops working, sign in with Telegram again.
-
-## Local testing
-
-A static local server can host the frontend, but Telegram BotFather must also allow the exact origin/redirect URL you use. The production values above are for `turlx.com`.
-
-The existing converter's URL format is preserved: the first non-empty path segment of a `share.google` URL is converted to `https://www.google.com/share.google?q=TOKEN`. This reformatting does not resolve the original destination or prove that Google will accept the generated link.
+1. A visitor signs in through the official Telegram OIDC flow handled by Supabase Auth.
+2. If not approved, they submit an access request.
+3. The admin sees a pending request with the verified Telegram username (if available) and approves or rejects it.
+4. The access decision is saved against the Supabase Auth user ID linked to Telegram.
+5. Each conversion requires a valid Supabase Auth JWT and a current active database row.
+6. Admins can revoke/restore non-admin users. Revocation blocks the next conversion request.
 
 ## Files
 
-- `index.html` — app, login gate, and admin dashboard UI
+- `index.html` — login gate, converter, and admin dashboard UI
 - `css/styles.css` — Shadow Shortner-inspired design
-- `js/supabase-config.js` — public configuration placeholders
-- `js/auth.js` — Telegram OIDC, access request, and admin UI
-- `auth/callback.html`, `js/telegram-callback.js` — OAuth callback/PKCE handling
-- `js/app.js` — conversion UI calling the protected server endpoint
-- `supabase/schema.sql` — private access-control tables with RLS
-- `supabase/functions/telegram-auth/index.ts` — Telegram token verification, access control, and conversion
-- `supabase/config.toml` — Edge Function verification mode
+- `js/supabase-config.js` — public Supabase configuration
+- `js/auth.js` — Supabase Auth Telegram sign-in, access requests, and admin UI
+- `js/app.js` — converter UI calling the protected server endpoint
+- `supabase/schema.sql` — RLS-protected access-control schema
+- `supabase/functions/telegram-auth/index.ts` — session validation, authorization, and URL conversion
+- `supabase/config.toml` — Edge Function JWT verification setting
+
+## Converter behavior
+
+The converter preserves the original output format: it extracts the first non-empty path segment of a `share.google` URL and builds `https://www.google.com/share.google?q=TOKEN`. It does not resolve the original destination or prove that Google will accept the generated URL.
