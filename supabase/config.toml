@@ -1,4 +1,3 @@
 [functions.telegram-auth]
-# This endpoint accepts Telegram OIDC tokens, not Supabase Auth JWTs.
-# The function verifies every Telegram ID token and checks authorization itself.
-verify_jwt = false
+# Supabase Auth validates the caller's JWT before the function runs.
+verify_jwt = true
