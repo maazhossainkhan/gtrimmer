@@ -40,7 +40,7 @@ Official guide: [Supabase Custom OAuth/OIDC providers](https://supabase.com/docs
 
 1. Create/select a bot using [@BotFather](https://t.me/BotFather).
 2. Open the bot's **Login Widget / OpenID Connect Login** settings.
-3. Add the exact Supabase callback URL from step 1, for example `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`.
+3. Add the exact Supabase callback URL from step 1 as the provider's redirect URI, for example `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`. If BotFather asks for website origins/allowed URLs, also register `https://turlx.com`.
 4. Copy the Telegram Client ID and Client Secret into the Supabase Auth custom-provider settings. Do not commit the client secret to GitHub.
 
 Official guide: [Telegram Login / OIDC](https://core.telegram.org/bots/telegram-login).
