@@ -47,7 +47,7 @@ Official guide: [Telegram Login / OIDC](https://core.telegram.org/bots/telegram-
 
 ## 3. Create the access-control tables
 
-In Supabase **SQL Editor**, run the complete contents of `supabase/schema.sql`.
+In Supabase **SQL Editor**, run the complete contents of `supabase/schema.sql`. If you already ran an earlier prototype schema, this script will only drop the old tables if they are empty. If old rows exist, it stops rather than deleting data; migrate those rows manually first.
 
 The `gtrimmer_access_users` and `gtrimmer_access_requests` tables have RLS enabled and no grants for browser roles. The Edge Function uses the server-side service-role key to read/write these records.
 
