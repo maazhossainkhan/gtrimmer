@@ -389,7 +389,12 @@
       return;
     }
     const telegramWebApp = window.Telegram && window.Telegram.WebApp;
-    if (telegramWebApp) {
+    const telegramLaunch = !!(telegramWebApp && (
+      (typeof telegramWebApp.initData === "string" && telegramWebApp.initData.length > 0) ||
+      /Telegram/i.test(navigator.userAgent) ||
+      /tgWebAppData|tgWebAppVersion|tgWebAppPlatform/.test(window.location.hash + "&" + window.location.search)
+    ));
+    if (telegramLaunch) {
       await initializeMiniApp();
       return;
     }
