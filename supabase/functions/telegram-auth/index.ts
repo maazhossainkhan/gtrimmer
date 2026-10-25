@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_USER_IDS = new Set((Deno.env.get("ADMIN_USER_IDS") ?? "").split(",").map(v => v.trim().toLowerCase()).filter(Boolean));
+const ADMIN_TELEGRAM_IDS = new Set((Deno.env.get("ADMIN_TELEGRAM_IDS") ?? "").split(",").map(v => v.trim()).filter(v => /^\d+$/.test(v)));
 const ALLOWED_ORIGINS = new Set(["https://turlx.com", "https://www.turlx.com", "http://localhost:8000", "http://127.0.0.1:8000"]);
 const db = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
