@@ -1,11 +1,9 @@
 /*
- * Browser-safe, public settings only.
- * Fill these after creating/configuring Supabase and Telegram Login.
- * NEVER put TELEGRAM_CLIENT_SECRET or SUPABASE_SERVICE_ROLE_KEY here.
+ * Browser-safe Supabase settings only.
+ * Use the project's public publishable key (or legacy anon key).
+ * NEVER put the Supabase service-role/secret key or Telegram Client Secret here.
  */
 window.GTRIMMER_SUPABASE_CONFIG = {
   supabaseUrl: "",
-  publishableKey: "",
-  telegramClientId: "",
-  telegramRedirectUri: "https://turlx.com/auth/callback.html"
+  publishableKey: ""
 };
