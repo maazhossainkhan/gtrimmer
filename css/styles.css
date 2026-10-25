@@ -531,3 +531,133 @@ button:focus-visible, input:focus-visible { outline-color: #a9f1c9; }
   .converter-card { padding: 21px 18px; }
   .header-inner { min-height: 62px; padding-inline: 16px; }
 }
+
+
+/* Compact copy control and coherent accent colors for every primary interaction. */
+.result-output-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 10px;
+}
+.result-output-row .result-output {
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  border-color: rgba(126, 201, 163, .22);
+  color: #c7f1d7;
+  background: rgba(4, 13, 11, .74);
+}
+.copy-inline-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid rgba(157, 237, 193, .42);
+  border-radius: 11px;
+  color: #072017;
+  background: linear-gradient(145deg, #b2f4d0, #67dba7);
+  box-shadow: 0 6px 16px rgba(34, 148, 100, .18), inset 0 1px 0 rgba(255,255,255,.45);
+  font-size: 21px;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+}
+.copy-inline-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: 0 9px 21px rgba(34, 148, 100, .25);
+}
+.copy-inline-button:active { transform: translateY(0); }
+.copy-inline-button:disabled { opacity: .62; cursor: wait; transform: none; }
+.copy-inline-button.is-copied {
+  color: #092216;
+  border-color: rgba(170, 243, 204, .6);
+  background: linear-gradient(145deg, #bdf4ad, #74e6b2);
+}
+.copy-button {
+  color: #062017;
+  border-color: rgba(157, 237, 193, .42);
+  background: linear-gradient(105deg, #91edbd 0%, #61dba8 54%, #c2e7a4 100%);
+  box-shadow: 0 7px 18px rgba(34, 148, 100, .12), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.copy-button:hover {
+  border-color: rgba(157, 237, 193, .65);
+  background: linear-gradient(105deg, #a4f3c9 0%, #75e4b6 54%, #d0eeaf 100%);
+}
+.reset-button {
+  border-color: rgba(211, 165, 112, .3);
+  color: #edc59a;
+  background: linear-gradient(135deg, rgba(89, 57, 31, .40), rgba(39, 30, 22, .72));
+}
+.reset-button:hover {
+  border-color: rgba(231, 183, 128, .52);
+  color: #ffe0b7;
+  background: linear-gradient(135deg, rgba(104, 65, 34, .50), rgba(48, 36, 25, .82));
+}
+.telegram-button {
+  border-color: rgba(129, 222, 174, .3);
+  color: #e4f8ed;
+  background: linear-gradient(115deg, rgba(29, 91, 65, .56), rgba(18, 49, 43, .92));
+  box-shadow: 0 8px 22px rgba(29, 115, 79, .11), inset 0 1px 0 rgba(255,255,255,.055);
+}
+.telegram-button:hover {
+  border-color: rgba(148, 239, 190, .48);
+  background: linear-gradient(115deg, rgba(35, 120, 81, .65), rgba(23, 63, 50, .95));
+}
+.request-access-button {
+  border-color: rgba(139, 231, 177, .38);
+  color: #d9f7e5;
+  background: linear-gradient(105deg, rgba(32, 117, 77, .38), rgba(37, 83, 61, .34));
+}
+.request-access-button:hover {
+  border-color: rgba(157, 237, 193, .6);
+  background: linear-gradient(105deg, rgba(35, 143, 91, .48), rgba(48, 102, 69, .42));
+}
+.secondary-button {
+  border-color: rgba(126, 206, 165, .28);
+  color: #c9efd8;
+  background: linear-gradient(135deg, rgba(31, 76, 57, .46), rgba(15, 35, 31, .82));
+}
+.secondary-button:hover {
+  border-color: rgba(139, 231, 177, .46);
+  background: linear-gradient(135deg, rgba(40, 111, 73, .55), rgba(20, 48, 37, .9));
+}
+.primary-button {
+  color: #062017;
+  border-color: rgba(157, 237, 193, .42);
+  background: linear-gradient(105deg, #91edbd 0%, #61dba8 54%, #c2e7a4 100%);
+}
+.signout-button {
+  border-color: rgba(212, 166, 111, .26);
+  color: #e8c79f;
+  background: rgba(85, 58, 33, .2);
+}
+.signout-button:hover {
+  border-color: rgba(231, 183, 128, .48);
+  color: #ffe0b7;
+  background: rgba(101, 68, 38, .3);
+}
+.danger-small-button {
+  border-color: rgba(230, 132, 111, .28);
+  color: #ffc2b4;
+  background: linear-gradient(135deg, rgba(111, 48, 42, .24), rgba(60, 29, 28, .48));
+}
+.danger-small-button:hover {
+  border-color: rgba(241, 145, 121, .52);
+  color: #ffdbd2;
+  background: linear-gradient(135deg, rgba(133, 55, 45, .36), rgba(74, 34, 31, .58));
+}
+@media (max-width: 420px) {
+  .result-output-row { gap: 6px; }
+  .copy-inline-button { flex-basis: 38px; width: 38px; min-height: 38px; border-radius: 9px; }
+  .result-output-row .result-output { padding: 10px; font-size: 10px; }
+}
