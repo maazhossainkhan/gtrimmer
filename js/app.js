@@ -5,6 +5,7 @@
   const input = document.getElementById("shareUrl");
   const resultBox = document.getElementById("resultBox");
   const resultOutput = document.getElementById("resultOutput");
+  const inlineCopyButton = document.getElementById("inlineCopyButton");
   const errorMessage = document.getElementById("errorMessage");
   const convertButton = document.getElementById("convertButton");
   const copyButton = document.getElementById("copyButton");
@@ -12,7 +13,7 @@
   const copyFeedback = document.getElementById("copyFeedback");
   const resetButton = document.getElementById("resetButton");
 
-  if (!form || !input || !resultBox || !resultOutput || !errorMessage || !convertButton || !copyButton || !copyButtonText || !copyFeedback || !resetButton) return;
+  if (!form || !input || !resultBox || !resultOutput || !inlineCopyButton || !errorMessage || !convertButton || !copyButton || !copyButtonText || !copyFeedback || !resetButton) return;
 
   let lastConvertedUrl = "";
   let feedbackTimer = null;
@@ -20,7 +21,11 @@
   function clearFeedback() {
     if (feedbackTimer !== null) window.clearTimeout(feedbackTimer);
     feedbackTimer = null;
-    copyButtonText.textContent = "Copy URL";
+    copyButtonText.textContent = "Copy output";
+    inlineCopyButton.textContent = "⧉";
+    inlineCopyButton.setAttribute("aria-label", "Copy output URL");
+    inlineCopyButton.title = "Copy output URL";
+    inlineCopyButton.classList.remove("is-copied");
     copyFeedback.textContent = "";
     copyFeedback.style.color = "";
   }
@@ -74,23 +79,38 @@
     return copied;
   }
 
-  async function handleCopy() {
+  async function handleCopy(event) {
     if (!lastConvertedUrl) return;
     clearFeedback();
     copyButton.disabled = true;
+    inlineCopyButton.disabled = true;
     copyButtonText.textContent = "Copying…";
+    inlineCopyButton.textContent = "…";
+    inlineCopyButton.setAttribute("aria-label", "Copying output URL");
     try {
       if (!(await copyWithFallback(lastConvertedUrl))) throw new Error("Copy blocked");
       copyButtonText.textContent = "✓ Copied";
+      inlineCopyButton.textContent = "✓";
+      inlineCopyButton.setAttribute("aria-label", "Copied output URL");
+      inlineCopyButton.title = "Copied";
+      inlineCopyButton.classList.add("is-copied");
       copyFeedback.textContent = "URL copied to your clipboard.";
     } catch (_error) {
-      copyButtonText.textContent = "Copy URL";
+      copyButtonText.textContent = "Copy output";
+      inlineCopyButton.textContent = "⧉";
+      inlineCopyButton.setAttribute("aria-label", "Copy output URL");
+      inlineCopyButton.title = "Copy output URL";
       copyFeedback.textContent = "The browser blocked copying. Select the URL above and copy it manually.";
-      copyFeedback.style.color = "#ff9aaa";
+      copyFeedback.style.color = "#f0b3a1";
     } finally {
       copyButton.disabled = false;
+      inlineCopyButton.disabled = false;
       feedbackTimer = window.setTimeout(function () {
-        copyButtonText.textContent = "Copy URL";
+        copyButtonText.textContent = "Copy output";
+        inlineCopyButton.textContent = "⧉";
+        inlineCopyButton.setAttribute("aria-label", "Copy output URL");
+        inlineCopyButton.title = "Copy output URL";
+        inlineCopyButton.classList.remove("is-copied");
         feedbackTimer = null;
       }, 1800);
     }
@@ -110,6 +130,7 @@
     if (!state || !state.authorized) return;
     form.addEventListener("submit", handleConvert);
     copyButton.addEventListener("click", handleCopy);
+    inlineCopyButton.addEventListener("click", handleCopy);
     resetButton.addEventListener("click", handleReset);
     input.addEventListener("input", function () {
       if (errorMessage.textContent) errorMessage.textContent = "";
