@@ -143,7 +143,7 @@ async function getAccessState(identity: Identity) {
   const { data: legacyRequest, error: legacyReqError } = await db!.from("gtrimmer_access_requests")
     .select("status, requested_at").eq("telegram_id", identity.telegram_id).limit(1);
   if (legacyReqError) throw new HttpError("Could not read existing access requests.", 500);
-  const request = miniRequest ?? legacyReqError === null ? (miniRequest ?? legacyRequest?.[0] ?? null) : null;
+  const request = miniRequest ?? legacyRequest?.[0] ?? null;
   return {
     state: request?.status === "pending" ? "pending" : (request?.status === "rejected" ? "rejected" : "needs_request"),
     user: { ...publicIdentity(identity), is_admin: false, status: request?.status ?? "not_requested" },
