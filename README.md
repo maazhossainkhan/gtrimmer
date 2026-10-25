@@ -141,5 +141,5 @@ The `telegram-bot` Edge Function now provides a persistent private-chat keyboard
 - **Request Access** — creates a Mini App access request for an unapproved Telegram ID.
 - **Help** — explains the commands and workflow.
 
-Commands are registered when a user sends `/start`: `/start`, `/app`, `/convert`, `/access`, `/request`, and `/help`. The menu button is set to **Open Google Trim**. Direct message conversion is restricted to private chats and checks current approval in the legacy or Mini App access tables before returning the same converted URL as the Mini App. The Telegram webhook continues using the existing `TELEGRAM_WEBHOOK_SECRET` and `TELEGRAM_BOT_TOKEN` secrets; never publish either value.
+Commands are registered when a user sends `/start`: `/start`, `/app`, `/convert`, `/access`, `/request`, and `/help`. The menu button is set to **Open Google Trim**. New Mini App access requests also send a Telegram notification to active Mini App admins, with a button to open the dashboard. Direct message conversion is restricted to private chats and checks current approval in the legacy or Mini App access tables before returning the same converted URL as the Mini App. The Telegram webhook continues using the existing `TELEGRAM_WEBHOOK_SECRET` and `TELEGRAM_BOT_TOKEN` secrets; never publish either value.
 
