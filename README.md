@@ -143,3 +143,7 @@ The `telegram-bot` Edge Function now provides a persistent private-chat keyboard
 
 Commands are registered when a user sends `/start`: `/start`, `/app`, `/convert`, `/access`, `/request`, and `/help`. The menu button is set to **Open Google Trim**. New Mini App access requests also send a Telegram notification to active Mini App admins, with a button to open the dashboard. Direct message conversion is restricted to private chats and checks current approval in the legacy or Mini App access tables before returning the same converted URL as the Mini App. The Telegram webhook continues using the existing `TELEGRAM_WEBHOOK_SECRET` and `TELEGRAM_BOT_TOKEN` secrets; never publish either value.
 
+## 11. Revoked accounts cleanup
+
+The admin dashboard separates active accounts from revoked accounts. Revoke moves an account to **Revoked accounts**, where it can be restored. **Clear list** is a destructive, admin-only action that removes non-admin revoked allowlist rows from both the legacy OIDC table and Mini App table. Pending requests and active rows are not deleted. If the same Telegram ID has an active record in either access table, its revoked row is skipped to avoid unintentionally restoring access by removing the blocking record. Cleared users may need to submit an access request again.
+
