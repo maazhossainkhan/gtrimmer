@@ -56,9 +56,9 @@ The `gtrimmer_access_users` and `gtrimmer_access_requests` tables have RLS enabl
 Install the Supabase CLI, then run these commands from the repository root:
 
 ```bash
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase functions deploy telegram-auth
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy telegram-auth
 ```
 
 Supabase normally makes `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` available to Edge Functions automatically. If your runtime does not provide them, add them as server-side function secrets. Never commit either value to GitHub.
@@ -68,14 +68,15 @@ Supabase normally makes `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` available
 1. After the provider is set up, open `https://turlx.com` and click **Continue with Telegram**.
 2. The first login creates a Supabase Auth user. Submit an access request.
 3. In Supabase **Authentication → Users**, copy the UUID of your own Telegram-authenticated account.
-4. Set `ADMIN_USER_IDS` to that UUID (comma-separated for multiple administrators), then redeploy `telegram-auth`:
+4. Set `ADMIN_USER_IDS` to that UUID (comma-separated for multiple administrators):
 
    ```bash
-   supabase secrets set ADMIN_USER_IDS="YOUR_SUPABASE_AUTH_USER_UUID"
-   supabase functions deploy telegram-auth
+   npx supabase secrets set ADMIN_USER_IDS="YOUR_SUPABASE_AUTH_USER_UUID"
    ```
 
-5. Sign in again. That account will be promoted to administrator and can approve/reject requests.
+   Supabase function secrets become available without redeploying the function. Reload the website and sign in again.
+
+5. That account will be promoted to administrator and can approve/reject requests.
 
 Using the Supabase user UUID for initial administrator setup is safer than trusting a username, which can change.
 
