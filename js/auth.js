@@ -93,7 +93,8 @@
     const config = getConfig();
     if (!config.supabaseUrl || !config.publishableKey) throw new Error("Supabase is not configured.");
     const token = tokenOverride || sessionStorage.getItem(TOKEN_KEY);
-    const body = Object.assign({ action: action }, payload || {});
+    const body = Object.assign({}, payload || {});
+    body.endpoint_action = action;
     if (action !== "exchange-code" && token) body.id_token = token;
     const response = await fetch(config.supabaseUrl.replace(/\/+$/, "") + "/functions/v1/telegram-auth", {
       method: "POST",
