@@ -43,8 +43,6 @@ Official guide: [Supabase Custom OAuth/OIDC providers](https://supabase.com/docs
 3. Add the exact Supabase callback URL from step 1 as the provider's redirect URI, for example `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`. If BotFather asks for website origins/allowed URLs, also register `https://turlx.com`.
 4. Copy the Telegram Client ID and Client Secret into the Supabase Auth custom-provider settings. Do not commit the client secret to GitHub.
 
-5. For required-channel verification, add the same Telegram bot as an administrator of the public channel `@ThresholdSyndicate`. No posting permissions are needed for the membership check, but Telegram's `getChatMember` method must be able to inspect channel members.
-6. In **Edge Functions → Secrets**, set `TELEGRAM_BOT_TOKEN` to the bot's Bot API token. This is separate from the OIDC Client Secret and must never be placed in GitHub or browser code.
 
 Official guide: [Telegram Login / OIDC](https://core.telegram.org/bots/telegram-login).
 
