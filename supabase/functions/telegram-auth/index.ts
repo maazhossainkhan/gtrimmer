@@ -71,6 +71,13 @@ async function bootstrapAdmin(identity: ReturnType<typeof identityFromUser>) {
     display_name: identity.display_name, status: "active", is_admin: true, updated_at: new Date().toISOString()
   }, { onConflict: "user_id" });
   if (error) throw new HttpError("Could not initialize the configured administrator: " + error.message, 500);
+  // If the first admin submitted a request before bootstrap was configured, close that own request.
+  const { error: requestError } = await db!.from("gtrimmer_access_requests").update({
+    status: "approved",
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: identity.user_id
+  }).eq("user_id", identity.user_id).eq("status", "pending");
+  if (requestError) throw new HttpError("Could not finalize administrator setup.", 500);
 }
 async function getAccessState(identity: ReturnType<typeof identityFromUser>) {
   requireDatabase();
