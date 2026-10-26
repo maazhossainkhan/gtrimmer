@@ -248,8 +248,6 @@ async function configureTelegramMenu(chatId: number) {
     { command: "help", description: "ℹ️ How to use Google Trim" }
   ];
 
-  // Use Telegram's native command menu, like the reference bot. Do not use a
-  // Web App menu button here: that opens a separate page instead of a command list.
   try {
     await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
     const actualCommands = await telegramApi("getMyCommands", { scope: { type: "default" } });
@@ -258,20 +256,21 @@ async function configureTelegramMenu(chatId: number) {
     console.warn("Could not set/verify bot commands:", error instanceof Error ? error.message : "unknown error");
   }
 
+  // Reset any old Web App menu override. Telegram's built-in default button opens
+  // the command list and is what the reference bots use for their left-side Menu.
   try {
-    await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
-    const defaultButton = await telegramApi("getChatMenuButton", {});
-    console.log("G-Trimmer default Menu button verified:", JSON.stringify(defaultButton));
+    await telegramApi("setChatMenuButton", { menu_button: { type: "default" } });
+    const globalMenu = await telegramApi("getChatMenuButton", {});
+    console.log("G-Trimmer global menu reset/verified:", JSON.stringify(globalMenu));
   } catch (error) {
-    console.warn("Could not set/verify default Menu button:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not reset/verify global menu:", error instanceof Error ? error.message : "unknown error");
   }
-
   try {
-    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
-    const currentButton = await telegramApi("getChatMenuButton", { chat_id: chatId });
-    console.log("G-Trimmer chat Menu button verified:", JSON.stringify(currentButton));
+    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "default" } });
+    const chatMenu = await telegramApi("getChatMenuButton", { chat_id: chatId });
+    console.log("G-Trimmer chat menu reset/verified:", JSON.stringify(chatMenu));
   } catch (error) {
-    console.warn("Could not set/verify chat Menu button:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not reset/verify chat menu:", error instanceof Error ? error.message : "unknown error");
   }
 }
 
