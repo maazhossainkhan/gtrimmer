@@ -123,11 +123,18 @@ function displayName(user: TelegramUser): string {
   const username = typeof user.username === "string" ? user.username.replace(/^@/, "").trim() : "";
   return username ? "@" + username : [user.first_name, user.last_name].filter(Boolean).join(" ") || "Telegram user";
 }
+function extractShareGoogleUrl(messageText: string): string | null {
+  // Extract the URL even when the user sends explanatory text before or after it.
+  const match = messageText.match(/(?:https?:\/\/)?(?:www\.)?share\.google\/[^\s<>"']+/i);
+  if (!match) return null;
+  const cleaned = match[0].replace(/[)\],.!?;:]+$/g, "");
+  return /^https?:\/\//i.test(cleaned) ? cleaned : "https://" + cleaned;
+}
 function convertUrl(rawValue: string): { token: string; url: string } | null {
-  const trimmed = rawValue.trim();
-  const candidate = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : "https://" + trimmed;
+  const extracted = extractShareGoogleUrl(rawValue);
+  if (!extracted) return null;
   let parsed: URL;
-  try { parsed = new URL(candidate); } catch { return null; }
+  try { parsed = new URL(extracted); } catch { return null; }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
   if (parsed.username || parsed.password) return null;
   const hostname = parsed.hostname.toLowerCase();
