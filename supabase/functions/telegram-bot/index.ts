@@ -429,7 +429,6 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
     return;
   }
 
-  const lang = await getLanguage(String(user.id));
   await sendMessage(chatId, tr(lang, "unknown"));
 }
 
