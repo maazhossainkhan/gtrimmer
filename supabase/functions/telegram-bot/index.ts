@@ -96,8 +96,7 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
 function keyboard(lang: BotLanguage = "en") {
   return {
     keyboard: [
-      [{ text: tr(lang, "open"), web_app: { url: MINI_APP_URL } }, { text: tr(lang, "convert"), style: "success" }],
-      [{ text: tr(lang, "start") }, { text: tr(lang, "language"), style: "success" }],
+      [{ text: tr(lang, "convert"), style: "success" }],
       [{ text: tr(lang, "access") }, { text: tr(lang, "request"), style: "success" }],
       [{ text: tr(lang, "help") }, { text: tr(lang, "contact"), style: "success" }],
       [{ text: tr(lang, "donate"), style: "success" }]
