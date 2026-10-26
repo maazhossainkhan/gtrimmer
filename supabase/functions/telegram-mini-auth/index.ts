@@ -189,6 +189,44 @@ async function listAdminData() {
 function validUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
+
+async function notifyAccessApproved(telegramId: unknown, username: unknown, displayName: unknown): Promise<void> {
+  const chatId = String(telegramId ?? "").trim();
+  if (!BOT_TOKEN || !/^\d{1,20}$/.test(chatId)) {
+    console.warn("Skipping approval notification: Telegram bot token or valid chat ID is unavailable.");
+    return;
+  }
+  const handle = typeof username === "string" ? username.replace(/^@/, "").trim() : "";
+  const display = typeof displayName === "string" ? displayName.trim() : "";
+  const recipient = handle ? "@" + handle : (display || "there");
+  try {
+    const response = await fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: "🎉 Congratulations, " + recipient + "!\\n\\n" +
+          "Your access to Google Trim by Shadow has been approved. You can now use the converter.\\n\\n" +
+          "Tap the button below to get started.",
+        reply_markup: {
+          inline_keyboard: [[{
+            text: "🚀 Open Google Trim",
+            style: "primary",
+            web_app: { url: "https://turlx.com/" }
+          }]]
+        },
+        disable_web_page_preview: true
+      })
+    });
+    const result: any = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok) {
+      console.warn("Could not send Telegram approval notification:", result?.description ?? "Telegram API request failed.");
+    }
+  } catch (error) {
+    console.warn("Could not send Telegram approval notification:", error instanceof Error ? error.message : "unknown error");
+  }
+}
+
 async function adminAction(identity: Identity, body: Record<string, unknown>) {
   await requireAdmin(identity);
   const action = String(body.admin_action ?? "");
@@ -277,6 +315,7 @@ async function adminAction(identity: Identity, body: Record<string, unknown>) {
         reviewed_at: new Date().toISOString(), reviewed_by_telegram_id: identity.telegram_id
       }).eq("telegram_id", targetTelegramId);
       if (updateError) throw new HttpError("Could not update the Mini App request.", 500);
+      if (action === "approve") await notifyAccessApproved(targetTelegramId, request.username, request.display_name);
       return { success: true, message: action === "approve" ? "Telegram account approved." : "Telegram request rejected." };
     }
     if (action === "revoke" || action === "restore") {
@@ -320,6 +359,7 @@ async function adminAction(identity: Identity, body: Record<string, unknown>) {
       }).eq("telegram_id", String(request.telegram_id)).eq("status", "pending");
       if (miniRequestError) throw new HttpError("The legacy request was updated, but its matching Mini App request could not be synchronized.", 500);
     }
+    if (action === "approve") await notifyAccessApproved(request.telegram_id, request.username, request.display_name);
     return { success: true, message: action === "approve" ? "Account approved." : "Request rejected." };
   }
   if (action === "revoke" || action === "restore") {
