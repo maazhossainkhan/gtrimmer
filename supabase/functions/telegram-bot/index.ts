@@ -96,9 +96,9 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
 function keyboard(lang: BotLanguage = "en") {
   return {
     keyboard: [
-      // Keep this as a normal reply-keyboard button. The bot responds with an inline
-      // Web App launcher, which supplies authenticated Telegram Mini App initData.
-      [{ text: tr(lang, "open") }, { text: tr(lang, "convert") }],
+      // The left-side Telegram Menu button is the only Mini App launcher.
+      // Keep the reply keyboard focused on the remaining chat actions.
+      [{ text: tr(lang, "convert") }],
       [{ text: tr(lang, "access") }, { text: tr(lang, "request") }],
       [{ text: tr(lang, "language") }, { text: tr(lang, "help") }],
       [{ text: tr(lang, "contact") }, { text: tr(lang, "donate") }]
