@@ -164,7 +164,7 @@
       if (revokedActions) revokedActions.hidden = !isMasterAdmin;
       const panelEyebrow = adminPanel.querySelector(".eyebrow");
       const panelTitle = document.getElementById("adminTitle");
-      if (panelEyebrow) panelEyebrow.textContent = isMasterAdmin ? "Master Admin" : "Moderator Admin";
+      if (panelEyebrow) panelEyebrow.textContent = "Admin";
       if (panelTitle) panelTitle.textContent = isMasterAdmin ? "Access management" : "Request review";
       const authorizedUsers = users.filter(user => user.status === "active");
       const revokedUsers = users.filter(user => user.status !== "active");
@@ -227,7 +227,7 @@
         const canChange = !user.is_admin && !isSelf;
         const meta = (user.telegram_id ? "Telegram ID " + user.telegram_id + " · " : "") +
           "Supabase user " + user.user_id + " · " +
-          (user.is_admin ? "Master Admin" : (user.is_moderator ? "Moderator Admin" : "Authorized"));
+          (user.is_admin || user.is_moderator ? "Admin" : "Authorized");
         const row = createListItem(username, meta, canChange ? "Revoke" : "", async function () {
           if (!window.confirm("Revoke converter access for " + username + "?")) return;
           try {
@@ -240,18 +240,18 @@
           const roleButton = document.createElement("button");
           roleButton.type = "button";
           roleButton.className = user.is_moderator ? "danger-small-button" : "moderator-small-button";
-          roleButton.textContent = user.is_moderator ? "Remove moderator" : "Make moderator";
+          roleButton.textContent = user.is_moderator ? "Remove Admin access" : "Grant Admin access";
           roleButton.addEventListener("click", async function () {
             const action = user.is_moderator ? "revoke-moderator" : "grant-moderator";
             const prompt = user.is_moderator
-              ? "Remove Moderator Admin permission from " + username + "?"
-              : "Allow " + username + " to only approve/reject pending access requests?";
+              ? "Remove Admin access from " + username + "?"
+              : "Grant review-only Admin access to " + username + "?";
             if (!window.confirm(prompt)) return;
             roleButton.disabled = true;
             try {
               await invokeServer("admin-manage-access", { admin_action: action, telegram_id: String(user.telegram_id) });
               setAdminFeedback(
-                (user.is_moderator ? "Removed Moderator Admin permission from " : "Granted Moderator Admin permission to ") + username + ".",
+                (user.is_moderator ? "Removed Admin access from " : "Granted Admin access to ") + username + ".",
                 "success"
               );
               await refreshAdminLists();
