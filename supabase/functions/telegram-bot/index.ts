@@ -21,7 +21,7 @@ type BotLanguage = "en" | "bn";
 const WORDS: Record<BotLanguage, Record<string, string>> = {
  en: {
   open:"🚀 Open Google Trim", convert:"🔗 Convert Link", access:"🔐 My Access", request:"📩 Request Access", help:"ℹ️ Help", contact:"💬 Contact Support", donate:"💛 Donate", start:"▶️ Start / Main Menu", language:"🌐 Language", placeholder:"Paste a share.google link to convert…",
-  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nUse the buttons below to open Google Trim, change language, check access, or get help. Tap Open Google Trim, then tap the secure launch button in the next message. You can also paste a share.google URL in this chat to convert it.",
+  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nUse the 🖥️ Mini App icon beside the message box to open Google Trim. Use the buttons below for Convert Link, Language, My Access, Help, Contact Support, and Donate. You can also paste a share.google URL here to convert it.",
   langPrompt:"🌐 Choose your preferred language:", langDone:"✅ Language set to English.",
   openPrompt:"Open the Mini App using the button below.",
   contactText:"💬 Need help with Google Trim?\n\nMessage @maazhossainkhan and include a short description of the problem.",
@@ -38,7 +38,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
  },
  bn: {
   open:"🚀 Google Trim খুলুন", convert:"🔗 লিংক রূপান্তর", access:"🔐 আমার অ্যাক্সেস", request:"📩 অ্যাক্সেসের অনুরোধ", help:"ℹ️ সাহায্য", contact:"💬 সাপোর্টে যোগাযোগ", donate:"💛 ডোনেট", start:"▶️ শুরু / মূল মেনু", language:"🌐 ভাষা", placeholder:"রূপান্তরের জন্য share.google লিংক পাঠান…",
-  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nনিচের বাটনগুলো দিয়ে Google Trim খুলুন, ভাষা পরিবর্তন করুন, অ্যাক্সেস দেখুন বা সাহায্য নিন। Open Google Trim চাপুন, তারপর পরের মেসেজের secure launch বাটনে চাপ দিন। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
+  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nGoogle Trim খুলতে মেসেজ বক্সের পাশের 🖥️ Mini App icon চাপুন। নিচের বাটনগুলো দিয়ে লিংক রূপান্তর, ভাষা পরিবর্তন, অ্যাক্সেস, সাহায্য, সাপোর্ট ও ডোনেট ব্যবহার করুন। রূপান্তরের জন্য সরাসরি share.google URL-ও পাঠাতে পারবেন।",
   langPrompt:"🌐 আপনার পছন্দের ভাষা নির্বাচন করুন:", langDone:"✅ ভাষা বাংলা করা হয়েছে।",
   openPrompt:"নিচের বাটনে চাপ দিয়ে Mini App খুলুন।",
   contactText:"💬 Google Trim নিয়ে সাহায্য প্রয়োজন?\n\nসমস্যার সংক্ষিপ্ত বিবরণ দিয়ে @maazhossainkhan-কে মেসেজ দিন।",
@@ -244,7 +244,7 @@ async function requestAccess(telegramUser: TelegramUser): Promise<"active" | "pe
 
 const configuredMenuChats = new Set<number>();
 
-async function configureTelegramMenu(chatId: number) {
+async function configureTelegramMenu(chatId: number): Promise<boolean> {
   const commands = [
     { command: "start", description: "🎨 Show main menu" },
     { command: "app", description: "🖥️ Open Google Trim Mini App" },
@@ -256,31 +256,28 @@ async function configureTelegramMenu(chatId: number) {
     { command: "donate", description: "💛 Donate to support Google Trim" },
     { command: "help", description: "ℹ️ How to use Google Trim" }
   ];
-
-  try {
-    await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
-    await telegramApi("setMyCommands", { commands, scope: { type: "all_private_chats" } });
-  } catch (error) {
-    console.warn("Could not configure bot commands:", error instanceof Error ? error.message : "unknown error");
-  }
-
-  // Restore the previous compact Mini App icon/button beside the message field.
-  // Keep this setting at both default and current-chat levels to avoid overrides.
   const miniAppMenu = { type: "web_app", text: "🖥️", web_app: { url: MINI_APP_URL } };
-  try {
-    await telegramApi("setChatMenuButton", { menu_button: miniAppMenu });
-    const globalMenu = await telegramApi("getChatMenuButton", {});
-    console.log("G-Trimmer global Mini App menu verified:", JSON.stringify(globalMenu));
-  } catch (error) {
-    console.warn("Could not set/verify global Mini App menu:", error instanceof Error ? error.message : "unknown error");
+
+  async function attempt(label: string, operation: () => Promise<unknown>): Promise<boolean> {
+    try {
+      await operation();
+      return true;
+    } catch (error) {
+      console.warn("Could not configure Telegram " + label + ":", error instanceof Error ? error.message : "unknown error");
+      return false;
+    }
   }
-  try {
-    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: miniAppMenu });
-    const chatMenu = await telegramApi("getChatMenuButton", { chat_id: chatId });
-    console.log("G-Trimmer chat Mini App menu verified:", JSON.stringify(chatMenu));
-  } catch (error) {
-    console.warn("Could not set/verify chat Mini App menu:", error instanceof Error ? error.message : "unknown error");
-  }
+
+  // Independent configuration calls run concurrently to reduce first-message latency.
+  const results = await Promise.all([
+    attempt("default commands", () => telegramApi("setMyCommands", { commands, scope: { type: "default" } })),
+    attempt("private-chat commands", () => telegramApi("setMyCommands", { commands, scope: { type: "all_private_chats" } })),
+    attempt("default Mini App menu", () => telegramApi("setChatMenuButton", { menu_button: miniAppMenu })),
+    attempt("chat Mini App menu", () => telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: miniAppMenu }))
+  ]);
+  const success = results.every(Boolean);
+  if (success) console.log("G-Trimmer Telegram menu configured successfully for chat", chatId);
+  return success;
 }
 
 async function sendLanguagePicker(chatId: number, lang: BotLanguage) {
@@ -297,7 +294,10 @@ async function handleCallback(query: any) {
   const message = query?.message;
   const chat = message?.chat;
   if (!callbackId || !user || !Number.isSafeInteger(user.id) || chat?.type !== "private" || !Number.isSafeInteger(chat?.id)) return;
-  if (!configuredMenuChats.has(chat.id)) { await configureTelegramMenu(chat.id); configuredMenuChats.add(chat.id); }
+  if (!configuredMenuChats.has(chat.id)) {
+    const configured = await configureTelegramMenu(chat.id);
+    if (configured) configuredMenuChats.add(chat.id);
+  }
   const data = typeof query?.data === "string" ? query.data : "";
   if (data !== "set_lang:bn" && data !== "set_lang:en") {
     await telegramApi("answerCallbackQuery", { callback_query_id: callbackId });
@@ -322,15 +322,13 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
   }
   const lang = await getLanguage(String(user.id));
 
+  if (!configuredMenuChats.has(chatId)) {
+    const configured = await configureTelegramMenu(chatId);
+    if (configured) configuredMenuChats.add(chatId);
+  }
   if (command === "/start" || isButton(text, "start")) {
-    await configureTelegramMenu(chatId);
-    configuredMenuChats.add(chatId);
     await sendMessage(chatId, fillText(tr(lang, "welcome"), { name: displayName(user) }));
     return;
-  }
-  if (!configuredMenuChats.has(chatId)) {
-    await configureTelegramMenu(chatId);
-    configuredMenuChats.add(chatId);
   }
   if (command === "/language" || command === "/lang" || isButton(text, "language")) {
     await sendLanguagePicker(chatId, lang);
