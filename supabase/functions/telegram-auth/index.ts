@@ -161,17 +161,17 @@ async function notifyModeratorGranted(telegramId: unknown, username: unknown, di
   }
   const handle = typeof username === "string" ? username.replace(/^@/, "").trim() : "";
   const display = typeof displayName === "string" ? displayName.trim() : "";
-  const recipient = handle ? "@" + handle : (display || "there");
+  const recipient = display || (handle ? "@" + handle : "there");
   try {
-    const response = await fetch("https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage", {
+    const response = await fetch("https://api.telegram.org/botTELEGRAM_BOT_TOKEN/sendMessage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: Number(chatId),
         text: "🎉 Congratulations, " + recipient + "!\n\n" +
-          "You have been appointed as a Moderator Admin for Google Trim by Shadow.\n\n" +
-          "You can review pending access requests and approve or reject them. You cannot revoke user access, manage administrator roles, or change other settings.\n\n" +
-          "Please open Google Trim to start reviewing requests.",
+          "You have been appointed as an Admin for G-Trimmer by Shadow.\n\n" +
+          "As an Admin, you can review pending access requests and approve or reject them.\n\n" +
+          "Welcome to the team! 💫",
         reply_markup: {
           inline_keyboard: [[{
             text: "🖥️ Open Google Trim",
