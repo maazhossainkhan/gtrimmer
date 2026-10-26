@@ -646,3 +646,26 @@ button:focus-visible, input:focus-visible { outline-color: #a9f1c9; }
   .donate-button, .contact-button { min-height: 32px; width: 33px; padding: 0; gap: 0; }
   .donate-button span:nth-child(2), .contact-button span:nth-child(2) { display: none; }
 }
+
+
+/* Master-only moderator role control */
+.access-list-item { flex-wrap: wrap; }
+.access-item-copy { flex: 1 1 100%; }
+.moderator-small-button {
+  flex: 0 1 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(112, 219, 166, .28);
+  border-radius: 8px;
+  color: #bdf3d1;
+  background: linear-gradient(120deg, rgba(28, 111, 75, .25), rgba(21, 70, 57, .35));
+  font-size: 9px;
+  font-weight: 780;
+  cursor: pointer;
+  transition: border-color .16s, background .16s;
+}
+.moderator-small-button:hover {
+  border-color: rgba(133, 238, 181, .52);
+  background: rgba(30, 126, 83, .35);
+}
+.moderator-small-button:disabled { opacity: .55; cursor: wait; }
