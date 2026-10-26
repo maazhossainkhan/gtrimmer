@@ -32,7 +32,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
   accessTitle:"🔐 Your access status", admin:"Administrator — full access enabled.", active:"Approved — converter access is enabled.", revoked:"Revoked — access is disabled. Contact the administrator.", pending:"Pending — waiting for administrator approval.", rejected:"Rejected — you may request access again.", needs:"Not approved yet — use Request Access.",
   reqActive:"✅ Your account is already approved.", reqPending:"⏳ Your request is already pending. Please wait.", reqRevoked:"⛔ Your access has been revoked. Contact the administrator.", reqSubmitted:"✅ Your access request was sent. You can convert after approval.",
   convPending:"⏳ Your request is pending approval.", convRevoked:"⛔ Your access was revoked. Contact the administrator.", convLocked:"🔒 Converter access is required. Tap Request Access and wait for approval.", convPrompt:"Send your share.google URL in the next message, or paste it here whenever you want to convert.",
-  converted:"✅ Converted link:\n\n{url}\n\nTap the link to open it, or copy the address.", copyConverted:"📋 Copy converted link", openConverted:"🔵 Open converted link",
+  converted:"✅ Converted link:\n\n{url}\n\nUse the buttons below to copy or open the result.", copyConverted:"📋 Copy converted link", openConverted:"🔵 Open converted link",
   deniedPending:"Your request is pending approval.", deniedRevoked:"Your access was revoked. Contact the administrator.", denied:"You need administrator approval before conversion. Tap Request Access below.",
   unknown:"I didn't recognize that command or link.\n\nTap Convert Link and send a valid share.google URL, or tap Help.", error:"Sorry, I couldn't complete that request. Please try again, or tap Help."
  },
@@ -49,7 +49,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
   accessTitle:"🔐 আপনার অ্যাক্সেসের অবস্থা", admin:"অ্যাডমিন — পূর্ণ অ্যাক্সেস চালু আছে।", active:"অনুমোদিত — কনভার্টার ব্যবহার করতে পারবেন।", revoked:"অ্যাক্সেস বাতিল — অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", pending:"Pending — আপনার অনুরোধ অ্যাডমিনের অনুমোদনের অপেক্ষায় আছে।", rejected:"অনুরোধ বাতিল হয়েছে — চাইলে আবার আবেদন করতে পারেন।", needs:"এখনো অনুমোদন পাননি — অ্যাক্সেসের অনুরোধ বাটনে চাপ দিন।",
   reqActive:"✅ আপনার অ্যাকাউন্ট ইতোমধ্যে অনুমোদিত।", reqPending:"⏳ আপনার অনুরোধ Pending আছে। অ্যাডমিনের অনুমোদনের জন্য অপেক্ষা করুন।", reqRevoked:"⛔ আপনার অ্যাক্সেস বাতিল হয়েছে। অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", reqSubmitted:"✅ অ্যাক্সেসের অনুরোধ অ্যাডমিনের কাছে পাঠানো হয়েছে। অনুমোদনের পর ব্যবহার করতে পারবেন।",
   convPending:"⏳ আপনার অনুরোধ অনুমোদনের অপেক্ষায় আছে।", convRevoked:"⛔ আপনার অ্যাক্সেস বাতিল হয়েছে। অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", convLocked:"🔒 লিংক রূপান্তর করতে অ্যাক্সেস লাগবে। 📩 অ্যাক্সেসের অনুরোধ বাটনে চাপ দিন।", convPrompt:"পরের মেসেজে share.google URL পাঠান। চাইলে যেকোনো সময় সরাসরি এই চ্যাটেও লিংক পাঠাতে পারেন।",
-  converted:"✅ রূপান্তরিত লিংক:\n\n{url}\n\nলিংক খুলতে চাপ দিন, অথবা ঠিকানাটি কপি করুন।", copyConverted:"📋 রূপান্তরিত লিংক কপি", openConverted:"🔵 রূপান্তরিত লিংক খুলুন",
+  converted:"✅ রূপান্তরিত লিংক:\n\n{url}\n\nলিংক কপি বা খুলতে নিচের বাটন ব্যবহার করুন।", copyConverted:"📋 রূপান্তরিত লিংক কপি", openConverted:"🔵 রূপান্তরিত লিংক খুলুন",
   deniedPending:"আপনার অনুরোধ অ্যাডমিনের অনুমোদনের অপেক্ষায় আছে।", deniedRevoked:"আপনার অ্যাক্সেস বাতিল হয়েছে। অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", denied:"লিংক রূপান্তরের আগে অ্যাডমিনের অনুমোদন লাগবে। নিচের 📩 অ্যাক্সেসের অনুরোধ বাটনে চাপ দিন।",
   unknown:"কমান্ড বা লিংকটি বুঝতে পারিনি।\n\n🔗 লিংক রূপান্তর বাটনে চাপ দিয়ে সঠিক share.google URL পাঠান, অথবা ℹ️ সাহায্য চাপুন।", error:"দুঃখিত, এই মুহূর্তে কাজটি সম্পন্ন করা যায়নি। একটু পরে আবার চেষ্টা করুন, অথবা ℹ️ সাহায্য চাপুন।"
  }
@@ -363,10 +363,20 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
         console.info("Share link permission response sent in", JSON.stringify({ lookupMs, totalMs: Date.now() - conversionStartedAt }));
         return;
       }
-      // Keep the persistent reply keyboard on the conversion result itself.
-      // The output URL remains a normal clickable Telegram link; this avoids an
-      // extra follow-up message/API request solely to restore the keyboard.
-      await sendMessage(chatId, fillText(tr(lang, "converted"), { url: candidate.url }), {}, lang);
+      // Restore the copy/open controls under the converted link. sendMessage()
+      // will also re-show the persistent reply keyboard in a follow-up message,
+      // because Telegram cannot put both keyboard types on a single message.
+      const linkButtons: Record<string, unknown>[] = [];
+      if (candidate.url.length <= 256) {
+        linkButtons.push({ text: tr(lang, "copyConverted"), copy_text: { text: candidate.url } });
+      }
+      linkButtons.push({ text: tr(lang, "openConverted"), url: candidate.url });
+      await sendMessage(
+        chatId,
+        fillText(tr(lang, "converted"), { url: candidate.url }),
+        { reply_markup: { inline_keyboard: [linkButtons] } },
+        lang
+      );
       console.info("Share link conversion response sent in", JSON.stringify({ lookupMs, totalMs: Date.now() - conversionStartedAt }));
       return;
     }
