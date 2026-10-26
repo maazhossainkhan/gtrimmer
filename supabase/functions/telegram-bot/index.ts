@@ -96,10 +96,10 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
 function keyboard(lang: BotLanguage = "en") {
   return {
     keyboard: [
-      [{ text: tr(lang, "convert"), style: "success" }],
-      [{ text: tr(lang, "access") }, { text: tr(lang, "request"), style: "success" }],
-      [{ text: tr(lang, "help") }, { text: tr(lang, "contact"), style: "success" }],
-      [{ text: tr(lang, "donate"), style: "success" }]
+      [{ text: tr(lang, "convert") }],
+      [{ text: tr(lang, "access") }, { text: tr(lang, "request") }],
+      [{ text: tr(lang, "help") }, { text: tr(lang, "contact") }],
+      [{ text: tr(lang, "donate") }]
     ],
     resize_keyboard: true,
     is_persistent: false,
@@ -228,23 +228,35 @@ async function requestAccess(telegramUser: TelegramUser): Promise<"active" | "pe
 const configuredMenuChats = new Set<number>();
 
 async function configureTelegramMenu(chatId: number) {
-  // Telegram's native Menu button can show commands; direct Start, Mini App and Language buttons are also on the reply keyboard.
+  const commands = [
+    { command: "start", description: "🎨 Show main menu" },
+    { command: "app", description: "🖥️ Open Google Trim Mini App" },
+    { command: "language", description: "🌐 Change language: বাংলা / English" },
+    { command: "convert", description: "🔗 Convert a share.google link" },
+    { command: "access", description: "🔐 Check access status" },
+    { command: "request", description: "📩 Request converter access" },
+    { command: "contact", description: "💬 Contact support" },
+    { command: "donate", description: "💛 Donate to support Google Trim" },
+    { command: "help", description: "ℹ️ How to use Google Trim" }
+  ];
+
+  // Set the bot-wide command list so it appears in the left-side Menu/Commands panel,
+  // then explicitly apply the commands menu to the current private chat.
   try {
-    await telegramApi("setMyCommands", { commands: [
-      { command: "start", description: "▶️ Start / main menu" },
-      { command: "app", description: "🖥️ Open Mini App" },
-      { command: "language", description: "🌐 Change language" },
-      { command: "convert", description: "🔗 Convert a share.google link" },
-      { command: "access", description: "🔐 Check access status" },
-      { command: "request", description: "📩 Request converter access" },
-      { command: "contact", description: "💬 Contact support" },
-      { command: "donate", description: "💛 Donate" },
-      { command: "help", description: "ℹ️ Help" }
-    ] });
-  } catch (error) { console.warn("Could not refresh bot commands:", error); }
+    await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
+  } catch (error) {
+    console.warn("Could not set default bot commands:", error instanceof Error ? error.message : "unknown error");
+  }
+  try {
+    await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
+  } catch (error) {
+    console.warn("Could not set default commands menu button:", error instanceof Error ? error.message : "unknown error");
+  }
   try {
     await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
-  } catch (error) { console.warn("Could not set commands menu button:", error); }
+  } catch (error) {
+    console.warn("Could not set chat commands menu button:", error instanceof Error ? error.message : "unknown error");
+  }
 }
 
 async function sendLanguagePicker(chatId: number, lang: BotLanguage) {
