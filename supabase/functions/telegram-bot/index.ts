@@ -118,17 +118,34 @@ function keyboard(lang: BotLanguage = "en") {
     input_field_placeholder: tr(lang, "placeholder")
   };
 }
-async function sendMessage(chatId: number, text: string, extra: Record<string, unknown> = {}) {
-  const lang = await getLanguage(String(chatId));
-  // Restore the original reply keyboard. It is independent of Telegram's native
-  // left-side Menu/Commands button; inline markup in extra is preserved for actions.
-  return await telegramApi("sendMessage", {
+async function sendMessage(chatId: number, text: string, extra: Record<string, unknown> = {}, languageOverride?: BotLanguage) {
+  const lang = languageOverride ?? await getLanguage(String(chatId));
+  const markup = extra.reply_markup as Record<string, unknown> | undefined;
+  const hasInlineKeyboard = !!markup && Array.isArray(markup.inline_keyboard);
+
+  // Only one reply_markup type can be attached to a Telegram message. When an
+  // inline-button message is sent, follow it with a short message carrying the
+  // persistent reply keyboard so users can reopen the keyboard without /start.
+  const sent = await telegramApi("sendMessage", {
     chat_id: chatId,
     text,
     reply_markup: keyboard(lang),
     disable_web_page_preview: true,
     ...extra
   });
+  if (hasInlineKeyboard) {
+    try {
+      await telegramApi("sendMessage", {
+        chat_id: chatId,
+        text: lang === "bn" ? "⬇️ নিচের বাটনগুলো ব্যবহার করতে পারবেন।" : "⬇️ Quick actions are available in the keyboard below.",
+        reply_markup: keyboard(lang),
+        disable_web_page_preview: true
+      });
+    } catch (error) {
+      console.warn("Could not restore reply keyboard after inline action:", error instanceof Error ? error.message : "unknown error");
+    }
+  }
+  return sent;
 }
 function displayName(user: TelegramUser): string {
   const username = typeof user.username === "string" ? user.username.replace(/^@/, "").trim() : "";
@@ -330,6 +347,30 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
     const allowedPayloads = new Set(["start", "app", "language", "lang", "convert", "access", "request", "contact", "donate", "help"]);
     if (allowedPayloads.has(payload) && payload !== "start") command = "/" + payload;
   }
+  if (command !== "/start" && !isButton(text, "start")) {
+    const candidate = convertUrl(text);
+    if (candidate) {
+      const conversionStartedAt = Date.now();
+      const lookupStartedAt = Date.now();
+      const [lang, access] = await Promise.all([
+        getLanguage(String(user.id)),
+        getAccessState(String(user.id))
+      ]);
+      const lookupMs = Date.now() - lookupStartedAt;
+      if (access.state !== "active" && access.state !== "admin") {
+        const reason = access.state === "pending" ? tr(lang, "deniedPending") : access.state === "revoked" ? tr(lang, "deniedRevoked") : tr(lang, "denied");
+        await sendMessage(chatId, "🔒 " + reason, {}, lang);
+        console.info("Share link permission response sent in", JSON.stringify({ lookupMs, totalMs: Date.now() - conversionStartedAt }));
+        return;
+      }
+      const linkButtons: Record<string, unknown>[] = [];
+      if (candidate.url.length <= 256) linkButtons.push({ text: tr(lang, "copyConverted"), copy_text: { text: candidate.url } });
+      linkButtons.push({ text: tr(lang, "openConverted"), url: candidate.url });
+      await sendMessage(chatId, fillText(tr(lang, "converted"), { url: candidate.url }), { reply_markup: { inline_keyboard: [linkButtons] } }, lang);
+      console.info("Share link conversion response sent in", JSON.stringify({ lookupMs, totalMs: Date.now() - conversionStartedAt }));
+      return;
+    }
+  }
   const lang = await getLanguage(String(user.id));
 
   if (command === "/start" || isButton(text, "start")) {
@@ -388,22 +429,7 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
     return;
   }
 
-  const conversionStartedAt = Date.now();
-  const converted = convertUrl(text);
-  if (converted) {
-    const access = await getAccessState(String(user.id));
-    if (access.state !== "active" && access.state !== "admin") {
-      const reason = access.state === "pending" ? tr(lang, "deniedPending") : access.state === "revoked" ? tr(lang, "deniedRevoked") : tr(lang, "denied");
-      await sendMessage(chatId, "🔒 " + reason);
-      return;
-    }
-    const linkButtons: Record<string, unknown>[] = [];
-    if (converted.url.length <= 256) linkButtons.push({ text: tr(lang, "copyConverted"), copy_text: { text: converted.url } });
-    linkButtons.push({ text: tr(lang, "openConverted"), url: converted.url });
-    await sendMessage(chatId, fillText(tr(lang, "converted"), { url: converted.url }), { reply_markup: { inline_keyboard: [linkButtons] } });
-    console.info("Share link conversion response sent in", Date.now() - conversionStartedAt, "ms");
-    return;
-  }
+  const lang = await getLanguage(String(user.id));
   await sendMessage(chatId, tr(lang, "unknown"));
 }
 
