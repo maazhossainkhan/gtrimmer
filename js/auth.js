@@ -150,6 +150,9 @@
     pendingRequestsList.replaceChildren();
     activeUsersList.replaceChildren();
     revokedUsersList.replaceChildren();
+    pendingCount.textContent = "…";
+    authorizedCount.textContent = "…";
+    revokedCount.textContent = "…";
     pendingRequestsList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading requests…" }));
     activeUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading authorized accounts…" }));
     revokedUsersList.appendChild(Object.assign(document.createElement("p"), { className: "list-empty", textContent: "Loading revoked accounts…" }));
@@ -285,6 +288,9 @@
         }, false));
       });
     } catch (error) {
+      pendingCount.textContent = "—";
+      authorizedCount.textContent = currentAccess.isMasterAdmin ? "—" : "0";
+      revokedCount.textContent = currentAccess.isMasterAdmin ? "—" : "0";
       setAdminFeedback("Could not load access lists: " + error.message, "error");
     } finally {
       adminRefreshButton.disabled = false;
@@ -359,8 +365,9 @@
       setIdentity(currentUser);
       currentAccess = {
         authorized: data.state === "active" || data.state === "admin",
-        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin) || data.role === "moderator",
-        isMasterAdmin: data.role === "master" || (data.state === "admin" && data.role !== "moderator"),
+        // Only trust the server's explicit role for privileged UI; state flags alone must not reveal Admin tools.
+        isAdmin: data.role === "master" || data.role === "moderator",
+        isMasterAdmin: data.role === "master",
         userId: user.id
       };
       if (data.state === "active" || data.state === "admin") {
@@ -470,8 +477,9 @@
       setIdentity(currentUser);
       currentAccess = {
         authorized: data.state === "active" || data.state === "admin",
-        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin) || data.role === "moderator",
-        isMasterAdmin: data.role === "master" || (data.state === "admin" && data.role !== "moderator"),
+        // Only trust the server's explicit role for privileged UI; state flags alone must not reveal Admin tools.
+        isAdmin: data.role === "master" || data.role === "moderator",
+        isMasterAdmin: data.role === "master",
         userId: data.user && data.user.user_id
       };
       if (data.state === "active" || data.state === "admin") {
