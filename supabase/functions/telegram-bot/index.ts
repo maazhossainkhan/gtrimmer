@@ -40,10 +40,10 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
 function keyboard() {
   return {
     keyboard: [
-      [{ text: "🚀 Open Google Trim", style: "primary", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link", style: "success" }],
-      [{ text: "🔐 My Access", style: "primary" }, { text: "📩 Request Access", style: "success" }],
-      [{ text: "ℹ️ Help", style: "primary" }, { text: "💬 Contact Support", style: "success" }],
-      [{ text: "💛 Donate", style: "success" }]
+      [{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link" }],
+      [{ text: "🔐 My Access" }, { text: "📩 Request Access" }],
+      [{ text: "ℹ️ Help" }, { text: "💬 Contact Support" }],
+      [{ text: "💛 Donate" }]
     ],
     resize_keyboard: true,
     // Do not force the reply keyboard to stay open. Telegram's native keyboard
@@ -210,7 +210,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
   }
   if (command === "/app" || text === "🚀 Open Google Trim") {
     await sendMessage(chatId, "Open the Mini App using the button below.", {
-      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", style: "primary", web_app: { url: MINI_APP_URL } }]] }
+      reply_markup: { inline_keyboard: [[{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }]] }
     });
     return;
   }
@@ -218,7 +218,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
     await sendMessage(
       chatId,
       "💬 Need help with Google Trim?\n\nFor any issue, send a message to @maazhossainkhan. Include a short description of the problem so support can help you.",
-      { reply_markup: { inline_keyboard: [[{ text: "✉️ Message @maazhossainkhan", style: "primary", url: CONTACT_URL }]] } }
+      { reply_markup: { inline_keyboard: [[{ text: "✉️ Message @maazhossainkhan", url: CONTACT_URL }]] } }
     );
     return;
   }
@@ -233,8 +233,8 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
       "Address: " + USDT_BEP20_ADDRESS + "\n\n" +
       "⚠️ For on-chain transfers, choose BNB Smart Chain (BEP20) exactly. Sending through another network may result in lost funds. Please double-check before confirming.",
       { reply_markup: { inline_keyboard: [
-        [{ text: "📋 Copy Binance Pay UID", style: "success", copy_text: { text: BINANCE_PAY_UID } }],
-        [{ text: "📋 Copy USDT BEP20 address", style: "success", copy_text: { text: USDT_BEP20_ADDRESS } }]
+        [{ text: "📋 Copy Binance Pay UID", copy_text: { text: BINANCE_PAY_UID } }],
+        [{ text: "📋 Copy USDT BEP20 address", copy_text: { text: USDT_BEP20_ADDRESS } }]
       ] } }
     );
     return;
@@ -300,9 +300,9 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
     }
     const linkButtons: Record<string, unknown>[] = [];
     if (converted.url.length <= 256) {
-      linkButtons.push({ text: "📋 Copy converted link", style: "success", copy_text: { text: converted.url } });
+      linkButtons.push({ text: "📋 Copy converted link", copy_text: { text: converted.url } });
     }
-    linkButtons.push({ text: "🔵 Open converted link", style: "primary", url: converted.url });
+    linkButtons.push({ text: "🔵 Open converted link", url: converted.url });
     await sendMessage(
       chatId,
       "✅ Converted link:\n\n" + converted.url + "\n\nUse the buttons below to copy or open the result.",
