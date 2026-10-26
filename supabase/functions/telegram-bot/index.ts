@@ -40,10 +40,12 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
 function keyboard() {
   return {
     keyboard: [
-      [{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link" }],
-      [{ text: "🔐 My Access" }, { text: "📩 Request Access" }],
-      [{ text: "ℹ️ Help" }, { text: "💬 Contact Support" }],
-      [{ text: "💛 Donate" }]
+      // Use Telegram's neutral surface for long labels that were hard to read
+      // against the user's purple theme accent; keep green on action buttons.
+      [{ text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link", style: "success" }],
+      [{ text: "🔐 My Access" }, { text: "📩 Request Access", style: "success" }],
+      [{ text: "ℹ️ Help" }, { text: "💬 Contact Support", style: "success" }],
+      [{ text: "💛 Donate", style: "success" }]
     ],
     resize_keyboard: true,
     // Do not force the reply keyboard to stay open. Telegram's native keyboard
