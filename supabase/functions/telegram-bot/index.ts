@@ -98,8 +98,8 @@ function keyboard(lang: BotLanguage = "en") {
     keyboard: [
       [{ text: tr(lang, "open"), web_app: { url: MINI_APP_URL } }, { text: tr(lang, "convert") }],
       [{ text: tr(lang, "access") }, { text: tr(lang, "request") }],
-      [{ text: tr(lang, "help") }, { text: tr(lang, "contact") }],
-      [{ text: tr(lang, "donate") }]
+      [{ text: tr(lang, "language") }, { text: tr(lang, "help") }],
+      [{ text: tr(lang, "contact") }, { text: tr(lang, "donate") }]
     ],
     resize_keyboard: true,
     is_persistent: false,
