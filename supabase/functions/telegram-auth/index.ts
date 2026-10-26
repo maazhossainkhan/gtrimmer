@@ -168,9 +168,9 @@ async function notifyModeratorGranted(telegramId: unknown, username: unknown, di
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: Number(chatId),
-        text: "🎉 Congratulations, " + recipient + "!\\n\\n" +
-          "You have been appointed as a Moderator Admin for Google Trim by Shadow.\\n\\n" +
-          "You can review pending access requests and approve or reject them. You cannot revoke user access, manage administrator roles, or change other settings.\\n\\n" +
+        text: "🎉 Congratulations, " + recipient + "!\n\n" +
+          "You have been appointed as a Moderator Admin for Google Trim by Shadow.\n\n" +
+          "You can review pending access requests and approve or reject them. You cannot revoke user access, manage administrator roles, or change other settings.\n\n" +
           "Please open Google Trim to start reviewing requests.",
         reply_markup: {
           inline_keyboard: [[{
