@@ -226,6 +226,8 @@ async function requestAccess(telegramUser: TelegramUser): Promise<"active" | "pe
   return "submitted";
 }
 
+const configuredMenuChats = new Set<number>();
+
 async function configureTelegramMenu(chatId: number) {
   // Telegram's native Menu button can show commands; direct Start, Mini App and Language buttons are also on the reply keyboard.
   try {
@@ -260,6 +262,7 @@ async function handleCallback(query: any) {
   const message = query?.message;
   const chat = message?.chat;
   if (!callbackId || !user || !Number.isSafeInteger(user.id) || chat?.type !== "private" || !Number.isSafeInteger(chat?.id)) return;
+  if (!configuredMenuChats.has(chat.id)) { await configureTelegramMenu(chat.id); configuredMenuChats.add(chat.id); }
   const data = typeof query?.data === "string" ? query.data : "";
   if (data !== "set_lang:bn" && data !== "set_lang:en") {
     await telegramApi("answerCallbackQuery", { callback_query_id: callbackId });
@@ -273,13 +276,13 @@ async function handleCallback(query: any) {
   await sendMessage(chat.id, fillText(tr(lang, "welcome"), { name: displayName(user) }));
 }
 async function handleText(chatId: number, user: TelegramUser, messageText: string) {
+  if (!configuredMenuChats.has(chatId)) { await configureTelegramMenu(chatId); configuredMenuChats.add(chatId); }
   const text = messageText.trim();
   const first = text.split(/\s+/)[0];
   const command = first.split("@")[0].toLowerCase();
   const lang = await getLanguage(String(user.id));
 
   if (command === "/start" || isButton(text, "start")) {
-    await configureTelegramMenu(chatId);
     await sendMessage(chatId, fillText(tr(lang, "welcome"), { name: displayName(user) }));
     return;
   }
