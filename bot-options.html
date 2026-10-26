@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="G-Trimmer by Shadow bot options">
+  <title>G-Trimmer Options</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #151d30;
+      --panel-hover: #202d45;
+      --text: #f4f7fb;
+      --muted: #adbad0;
+      --accent: #8b7cff;
+      --line: rgba(255,255,255,.09);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+      background: radial-gradient(ellipse at 50% -12%, rgba(112,95,245,.25), transparent 48%), var(--bg);
+      color: var(--text);
+      font: 16px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: 100%; max-width: 560px; margin: 0 auto; }
+    .header { text-align: center; padding: 10px 4px 22px; }
+    .logo {
+      width: 58px; height: 58px; margin: 0 auto 12px; border-radius: 18px;
+      display: grid; place-items: center; background: linear-gradient(145deg, #9082ff, #5144c4);
+      color: white; font-size: 28px; box-shadow: 0 8px 24px rgba(100,85,230,.22);
+    }
+    h1 { margin: 0; font-size: 25px; letter-spacing: -.45px; }
+    .subtitle { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .option {
+      display: flex; align-items: center; gap: 11px; min-height: 76px; width: 100%;
+      padding: 13px; text-align: left; border: 1px solid var(--line); border-radius: 16px;
+      color: var(--text); background: var(--panel); cursor: pointer; font: inherit;
+      transition: background .15s, transform .15s, border-color .15s;
+    }
+    .option:hover, .option:focus-visible { background: var(--panel-hover); border-color: rgba(139,124,255,.65); outline: none; }
+    .option:active { transform: scale(.985); }
+    .ico { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: rgba(139,124,255,.16); font-size: 20px; }
+    .copy { min-width: 0; }
+    .label { display: block; font-size: 14px; font-weight: 700; line-height: 1.25; }
+    .desc { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+    .footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 12px; }
+    @media (max-width: 360px) {
+      body { padding-left: 11px; padding-right: 11px; }
+      .grid { gap: 8px; }
+      .option { gap: 8px; padding: 10px; min-height: 73px; }
+      .ico { flex-basis: 32px; width: 32px; height: 32px; font-size: 18px; }
+      .label { font-size: 12px; }
+      .desc { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="header">
+      <div class="logo" aria-hidden="true">✦</div>
+      <h1>G-Trimmer Options</h1>
+      <p class="subtitle">Choose an action. Tap any option to continue in the bot.</p>
+    </header>
+    <section class="grid" aria-label="Bot commands">
+      <button class="option" data-action="start" type="button"><span class="ico">▶️</span><span class="copy"><span class="label">Start / Main Menu</span><span class="desc">Return to the welcome screen</span></span></button>
+      <button class="option" data-action="app" type="button"><span class="ico">🖥️</span><span class="copy"><span class="label">Open Google Trim</span><span class="desc">Launch the Mini App</span></span></button>
+      <button class="option" data-action="language" type="button"><span class="ico">🌐</span><span class="copy"><span class="label">Language</span><span class="desc">বাংলা / English</span></span></button>
+      <button class="option" data-action="convert" type="button"><span class="ico">🔗</span><span class="copy"><span class="label">Convert Link</span><span class="desc">Convert a share.google URL</span></span></button>
+      <button class="option" data-action="access" type="button"><span class="ico">🔐</span><span class="copy"><span class="label">My Access</span><span class="desc">Check your permission</span></span></button>
+      <button class="option" data-action="request" type="button"><span class="ico">📩</span><span class="copy"><span class="label">Request Access</span><span class="desc">Ask for converter approval</span></span></button>
+      <button class="option" data-action="help" type="button"><span class="ico">ℹ️</span><span class="copy"><span class="label">Help</span><span class="desc">Read usage instructions</span></span></button>
+      <button class="option" data-action="contact" type="button"><span class="ico">💬</span><span class="copy"><span class="label">Contact Support</span><span class="desc">Get help from support</span></span></button>
+      <button class="option" data-action="donate" type="button"><span class="ico">💛</span><span class="copy"><span class="label">Donate</span><span class="desc">Support the project</span></span></button>
+    </section>
+    <footer class="footer">G-Trimmer by Shadow · Bot Options</footer>
+  </main>
+  <script>
+    (function () {
+      const tg = window.Telegram && window.Telegram.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        try {
+          const p = tg.themeParams || {};
+          if (p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
+          if (p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
+          if (p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
+          if (p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
+          if (p.button_color) document.documentElement.style.setProperty("--accent", p.button_color);
+        } catch (_) {}
+      }
+      function openAction(action) {
+        const url = "https://t.me/gtrimmerbot?start=" + encodeURIComponent(action);
+        if (tg && typeof tg.openTelegramLink === "function") {
+          tg.openTelegramLink(url);
+        } else {
+          window.location.href = url;
+        }
+      }
+      document.querySelectorAll("[data-action]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          openAction(button.getAttribute("data-action"));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
