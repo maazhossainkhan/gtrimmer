@@ -167,7 +167,7 @@
       if (revokedActions) revokedActions.hidden = !isMasterAdmin;
       const panelEyebrow = adminPanel.querySelector(".eyebrow");
       const panelTitle = document.getElementById("adminTitle");
-      if (panelEyebrow) panelEyebrow.textContent = "Admin";
+      if (panelEyebrow) panelEyebrow.textContent = isMasterAdmin ? "Master Admin" : "Admin";
       if (panelTitle) panelTitle.textContent = isMasterAdmin ? "Access management" : "Request review";
       const authorizedUsers = users.filter(user => user.status === "active");
       const revokedUsers = users.filter(user => user.status !== "active");
