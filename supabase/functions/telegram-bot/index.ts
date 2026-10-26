@@ -7,6 +7,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_TELEGRAM_IDS = new Set((Deno.env.get("ADMIN_TELEGRAM_IDS") ?? "").split(",").map(v => v.trim()).filter(v => /^\d+$/.test(v)));
 const MINI_APP_URL = "https://turlx.com/";
 const CONTACT_URL = "https://t.me/maazhossainkhan";
+const BINANCE_PAY_UID = "731347605";
+const USDT_BEP20_ADDRESS = "0xdf0587f04b6126ba1fd03b4391e17a99b717823b";
 const API_BASE = "https://api.telegram.org";
 const db = SUPABASE_URL && SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -40,7 +42,8 @@ function keyboard() {
     keyboard: [
       [{ text: "🚀 Open Google Trim", style: "primary", web_app: { url: MINI_APP_URL } }, { text: "🔗 Convert Link", style: "success" }],
       [{ text: "🔐 My Access", style: "primary" }, { text: "📩 Request Access", style: "success" }],
-      [{ text: "ℹ️ Help", style: "primary" }, { text: "💬 Contact Support", style: "success" }]
+      [{ text: "ℹ️ Help", style: "primary" }, { text: "💬 Contact Support", style: "success" }],
+      [{ text: "💛 Donate", style: "success" }]
     ],
     resize_keyboard: true,
     // Do not force the reply keyboard to stay open. Telegram's native keyboard
@@ -182,6 +185,7 @@ async function configureTelegramMenu(chatId: number) {
       { command: "access", description: "🔐 Check your access status" },
       { command: "request", description: "📩 Request converter access" },
       { command: "contact", description: "💬 Contact support" },
+      { command: "donate", description: "💛 Donate to support Google Trim" },
       { command: "help", description: "ℹ️ How to use Google Trim" }
     ] });
   } catch (error) { console.warn("Could not refresh bot commands:", error); }
@@ -218,6 +222,23 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
     );
     return;
   }
+  if (command === "/donate" || text === "💛 Donate") {
+    await sendMessage(
+      chatId,
+      "💛 Support Google Trim by Shadow\\n\\n" +
+      "Choose either donation method:\\n\\n" +
+      "1) Binance Pay (USDT)\\n" +
+      "UID: " + BINANCE_PAY_UID + "\\n\\n" +
+      "2) USDT (BEP20)\\n" +
+      "Address: " + USDT_BEP20_ADDRESS + "\\n\\n" +
+      "⚠️ For on-chain transfers, choose BNB Smart Chain (BEP20) exactly. Sending through another network may result in lost funds. Please double-check before confirming.",
+      { reply_markup: { inline_keyboard: [
+        [{ text: "📋 Copy Binance Pay UID", style: "success", copy_text: { text: BINANCE_PAY_UID } }],
+        [{ text: "📋 Copy USDT BEP20 address", style: "success", copy_text: { text: USDT_BEP20_ADDRESS } }]
+      ] } }
+    );
+    return;
+  }
   if (command === "/help" || text === "ℹ️ Help") {
     await sendMessage(chatId,
       "Google Trim by Shadow — Help\n\n" +
@@ -227,7 +248,7 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
       "• Request Access: ask the administrator for permission.\n" +
       "• Contact Support: message support if you run into an issue.\n\n" +
       "The bot only converts approved accounts. A request remains pending until an administrator approves it.\n\n" +
-      "Commands: /start, /app, /convert, /access, /request, /contact, /help.", { reply_markup: keyboard() });
+      "Commands: /start, /app, /convert, /access, /request, /contact, /donate, /help.", { reply_markup: keyboard() });
     return;
   }
   if (command === "/access" || command === "/myaccess" || text === "🔐 My Access") {
