@@ -136,8 +136,8 @@ async function notifyAccessApproved(telegramId: unknown, username: unknown, disp
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: Number(chatId),
-        text: "🎉 Congratulations, " + recipient + "!\\n\\n" +
-          "Your access to Google Trim by Shadow has been approved. You can now use the converter.\\n\\n" +
+        text: "🎉 Congratulations, " + recipient + "!\n\n" +
+          "Your access to Google Trim by Shadow has been approved. You can now use the converter.\n\n" +
           "Tap the button below to get started.",
         reply_markup: {
           inline_keyboard: [[{
