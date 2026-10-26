@@ -6,6 +6,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_TELEGRAM_IDS = new Set((Deno.env.get("ADMIN_TELEGRAM_IDS") ?? "").split(",").map(v => v.trim()).filter(v => /^\d+$/.test(v)));
 const MINI_APP_URL = "https://turlx.com/";
+const OPTIONS_URL = "https://turlx.com/bot-options.html";
 const CONTACT_URL = "https://t.me/maazhossainkhan";
 const BINANCE_PAY_UID = "731347605";
 const USDT_BEP20_ADDRESS = "0xdf0587f04b6126ba1fd03b4391e17a99b717823b";
@@ -248,28 +249,27 @@ async function configureTelegramMenu(chatId: number) {
     { command: "help", description: "ℹ️ How to use Google Trim" }
   ];
 
-  // Set the bot-wide command list so it appears in the left-side Menu/Commands panel,
-  // then explicitly apply the commands menu to the current private chat.
+  // The left-side menu button is a web app named "Options". Its page has
+  // one-tap choices that deep-link back to the supported bot commands.
   try {
     const result = await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
-    console.log("G-Trimmer default bot commands configured:", Boolean(result));
-    const commandState = await telegramApi("getMyCommands", { scope: { type: "default" } });
-    console.log("G-Trimmer default commands verified:", JSON.stringify((commandState ?? []).map((c: any) => c.command)));
+    console.log("G-Trimmer commands configured:", Boolean(result));
   } catch (error) {
-    console.warn("Could not set/verify default bot commands:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set bot commands:", error instanceof Error ? error.message : "unknown error");
+  }
+  const optionsMenu = { type: "web_app", text: "Options", web_app: { url: OPTIONS_URL } };
+  try {
+    const result = await telegramApi("setChatMenuButton", { menu_button: optionsMenu });
+    console.log("G-Trimmer default Options button set:", Boolean(result));
+  } catch (error) {
+    console.warn("Could not set default Options button:", error instanceof Error ? error.message : "unknown error");
   }
   try {
-    const result = await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
-    console.log("G-Trimmer default menu button set:", Boolean(result));
-  } catch (error) {
-    console.warn("Could not set default commands menu button:", error instanceof Error ? error.message : "unknown error");
-  }
-  try {
-    const result = await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
+    const result = await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: optionsMenu });
     const current = await telegramApi("getChatMenuButton", { chat_id: chatId });
-    console.log("G-Trimmer chat menu button set:", Boolean(result), "verified:", JSON.stringify(current));
+    console.log("G-Trimmer chat Options button set:", Boolean(result), "verified:", JSON.stringify(current));
   } catch (error) {
-    console.warn("Could not set/verify chat commands menu button:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify chat Options button:", error instanceof Error ? error.message : "unknown error");
   }
 }
 
@@ -303,7 +303,13 @@ async function handleCallback(query: any) {
 async function handleText(chatId: number, user: TelegramUser, messageText: string) {
   const text = messageText.trim();
   const first = text.split(/\s+/)[0];
-  const command = first.split("@")[0].toLowerCase();
+  let command = first.split("@")[0].toLowerCase();
+  // Mini App Options buttons return to the bot using /start <action>.
+  if (command === "/start") {
+    const payload = (text.split(/\s+/)[1] ?? "").toLowerCase();
+    const allowedPayloads = new Set(["start", "app", "language", "lang", "convert", "access", "request", "contact", "donate", "help"]);
+    if (allowedPayloads.has(payload) && payload !== "start") command = "/" + payload;
+  }
   const lang = await getLanguage(String(user.id));
 
   if (command === "/start" || isButton(text, "start")) {
