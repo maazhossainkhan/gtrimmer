@@ -6,7 +6,6 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_TELEGRAM_IDS = new Set((Deno.env.get("ADMIN_TELEGRAM_IDS") ?? "").split(",").map(v => v.trim()).filter(v => /^\d+$/.test(v)));
 const MINI_APP_URL = "https://turlx.com/";
-const OPTIONS_URL = "https://turlx.com/bot-options.html";
 const CONTACT_URL = "https://t.me/maazhossainkhan";
 const BINANCE_PAY_UID = "731347605";
 const USDT_BEP20_ADDRESS = "0xdf0587f04b6126ba1fd03b4391e17a99b717823b";
@@ -22,7 +21,7 @@ type BotLanguage = "en" | "bn";
 const WORDS: Record<BotLanguage, Record<string, string>> = {
  en: {
   open:"🚀 Open Google Trim", convert:"🔗 Convert Link", access:"🔐 My Access", request:"📩 Request Access", help:"ℹ️ Help", contact:"💬 Contact Support", donate:"💛 Donate", start:"▶️ Start / Main Menu", language:"🌐 Language", placeholder:"Paste a share.google link to convert…",
-  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nOpen the Menu beside the message box to choose Start, Open Google Trim, Language, Help and other options. You can also paste a share.google URL in this chat to convert it.",
+  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nTap Menu beside the message box to open Start, Open Google Trim, Language, Help and other commands. You can also paste a share.google URL in this chat to convert it.",
   langPrompt:"🌐 Choose your preferred language:", langDone:"✅ Language set to English.",
   openPrompt:"Open the Mini App using the button below.",
   contactText:"💬 Need help with Google Trim?\n\nMessage @maazhossainkhan and include a short description of the problem.",
@@ -39,7 +38,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
  },
  bn: {
   open:"🚀 Google Trim খুলুন", convert:"🔗 লিংক রূপান্তর", access:"🔐 আমার অ্যাক্সেস", request:"📩 অ্যাক্সেসের অনুরোধ", help:"ℹ️ সাহায্য", contact:"💬 সাপোর্টে যোগাযোগ", donate:"💛 ডোনেট", start:"▶️ শুরু / মূল মেনু", language:"🌐 ভাষা", placeholder:"রূপান্তরের জন্য share.google লিংক পাঠান…",
-  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nমেসেজ বক্সের পাশের Menu খুলে শুরু, Google Trim, ভাষা, সাহায্যসহ অন্যান্য অপশন বেছে নিন। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
+  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nমেসেজ বক্সের পাশের Menu চাপলে Start, Google Trim, ভাষা, সাহায্যসহ command তালিকা খুলবে। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
   langPrompt:"🌐 আপনার পছন্দের ভাষা নির্বাচন করুন:", langDone:"✅ ভাষা বাংলা করা হয়েছে।",
   openPrompt:"নিচের বাটনে চাপ দিয়ে Mini App খুলুন।",
   contactText:"💬 Google Trim নিয়ে সাহায্য প্রয়োজন?\n\nসমস্যার সংক্ষিপ্ত বিবরণ দিয়ে @maazhossainkhan-কে মেসেজ দিন।",
@@ -249,27 +248,30 @@ async function configureTelegramMenu(chatId: number) {
     { command: "help", description: "ℹ️ How to use Google Trim" }
   ];
 
-  // The left-side menu button is a web app named "Options". Its page has
-  // one-tap choices that deep-link back to the supported bot commands.
+  // Use Telegram's native command menu, like the reference bot. Do not use a
+  // Web App menu button here: that opens a separate page instead of a command list.
   try {
-    const result = await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
-    console.log("G-Trimmer commands configured:", Boolean(result));
+    await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
+    const actualCommands = await telegramApi("getMyCommands", { scope: { type: "default" } });
+    console.log("G-Trimmer commands verified:", JSON.stringify((actualCommands ?? []).map((item: any) => item.command)));
   } catch (error) {
-    console.warn("Could not set bot commands:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify bot commands:", error instanceof Error ? error.message : "unknown error");
   }
-  const optionsMenu = { type: "web_app", text: "Options", web_app: { url: OPTIONS_URL } };
+
   try {
-    const result = await telegramApi("setChatMenuButton", { menu_button: optionsMenu });
-    console.log("G-Trimmer default Options button set:", Boolean(result));
+    await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
+    const defaultButton = await telegramApi("getChatMenuButton", {});
+    console.log("G-Trimmer default Menu button verified:", JSON.stringify(defaultButton));
   } catch (error) {
-    console.warn("Could not set default Options button:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify default Menu button:", error instanceof Error ? error.message : "unknown error");
   }
+
   try {
-    const result = await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: optionsMenu });
-    const current = await telegramApi("getChatMenuButton", { chat_id: chatId });
-    console.log("G-Trimmer chat Options button set:", Boolean(result), "verified:", JSON.stringify(current));
+    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
+    const currentButton = await telegramApi("getChatMenuButton", { chat_id: chatId });
+    console.log("G-Trimmer chat Menu button verified:", JSON.stringify(currentButton));
   } catch (error) {
-    console.warn("Could not set/verify chat Options button:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify chat Menu button:", error instanceof Error ? error.message : "unknown error");
   }
 }
 
