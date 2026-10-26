@@ -368,9 +368,9 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
       // because Telegram cannot put both keyboard types on a single message.
       const linkButtons: Record<string, unknown>[] = [];
       if (candidate.url.length <= 256) {
-        linkButtons.push({ text: tr(lang, "copyConverted"), copy_text: { text: candidate.url } });
+        // A single clipboard icon only—no button label and no separate Open button.
+        linkButtons.push({ text: "📋", copy_text: { text: candidate.url } });
       }
-      linkButtons.push({ text: tr(lang, "openConverted"), url: candidate.url });
       await sendMessage(
         chatId,
         fillText(tr(lang, "converted"), { url: candidate.url }),
