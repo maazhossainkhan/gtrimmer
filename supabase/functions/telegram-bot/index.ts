@@ -113,7 +113,7 @@ function keyboard(lang: BotLanguage = "en") {
       [{ text: tr(lang, "contact") }, { text: tr(lang, "donate") }]
     ],
     resize_keyboard: true,
-    is_persistent: true,
+    is_persistent: false,
     one_time_keyboard: false,
     input_field_placeholder: tr(lang, "placeholder")
   };
@@ -133,18 +133,6 @@ async function sendMessage(chatId: number, text: string, extra: Record<string, u
     disable_web_page_preview: true,
     ...extra
   });
-  if (hasInlineKeyboard) {
-    try {
-      await telegramApi("sendMessage", {
-        chat_id: chatId,
-        text: lang === "bn" ? "⬇️ নিচের বাটনগুলো ব্যবহার করতে পারবেন।" : "⬇️ Quick actions are available in the keyboard below.",
-        reply_markup: keyboard(lang),
-        disable_web_page_preview: true
-      });
-    } catch (error) {
-      console.warn("Could not restore reply keyboard after inline action:", error instanceof Error ? error.message : "unknown error");
-    }
-  }
   return sent;
 }
 function displayName(user: TelegramUser): string {
