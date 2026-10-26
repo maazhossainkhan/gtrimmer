@@ -21,7 +21,7 @@ type BotLanguage = "en" | "bn";
 const WORDS: Record<BotLanguage, Record<string, string>> = {
  en: {
   open:"🚀 Open Google Trim", convert:"🔗 Convert Link", access:"🔐 My Access", request:"📩 Request Access", help:"ℹ️ Help", contact:"💬 Contact Support", donate:"💛 Donate", start:"▶️ Start / Main Menu", language:"🌐 Language", placeholder:"Paste a share.google link to convert…",
-  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nUse the buttons below to navigate. Tap Start / Main Menu any time to return here. You can paste a share.google URL in this chat to convert it.",
+  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nOpen the Menu beside the message box to choose Start, Open Google Trim, Language, Help and other options. You can also paste a share.google URL in this chat to convert it.",
   langPrompt:"🌐 Choose your preferred language:", langDone:"✅ Language set to English.",
   openPrompt:"Open the Mini App using the button below.",
   contactText:"💬 Need help with Google Trim?\n\nMessage @maazhossainkhan and include a short description of the problem.",
@@ -38,7 +38,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
  },
  bn: {
   open:"🚀 Google Trim খুলুন", convert:"🔗 লিংক রূপান্তর", access:"🔐 আমার অ্যাক্সেস", request:"📩 অ্যাক্সেসের অনুরোধ", help:"ℹ️ সাহায্য", contact:"💬 সাপোর্টে যোগাযোগ", donate:"💛 ডোনেট", start:"▶️ শুরু / মূল মেনু", language:"🌐 ভাষা", placeholder:"রূপান্তরের জন্য share.google লিংক পাঠান…",
-  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nনিচের বাটনগুলো ব্যবহার করুন। যেকোনো সময় শুরু / মূল মেনু চাপলে এখানে ফিরতে পারবেন। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
+  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nমেসেজ বক্সের পাশের Menu খুলে শুরু, Google Trim, ভাষা, সাহায্যসহ অন্যান্য অপশন বেছে নিন। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
   langPrompt:"🌐 আপনার পছন্দের ভাষা নির্বাচন করুন:", langDone:"✅ ভাষা বাংলা করা হয়েছে।",
   openPrompt:"নিচের বাটনে চাপ দিয়ে Mini App খুলুন।",
   contactText:"💬 Google Trim নিয়ে সাহায্য প্রয়োজন?\n\nসমস্যার সংক্ষিপ্ত বিবরণ দিয়ে @maazhossainkhan-কে মেসেজ দিন।",
@@ -108,8 +108,16 @@ function keyboard(lang: BotLanguage = "en") {
   };
 }
 async function sendMessage(chatId: number, text: string, extra: Record<string, unknown> = {}) {
-  const lang = await getLanguage(String(chatId));
-  return await telegramApi("sendMessage", { chat_id: chatId, text, reply_markup: keyboard(lang), disable_web_page_preview: true, ...extra });
+  // Do not attach a persistent reply keyboard to every message. It hides the native
+  // left-side Menu/Commands affordance in some Telegram clients. Remove any old
+  // reply keyboard by default; specific inline keyboards in extra still override this.
+  return await telegramApi("sendMessage", {
+    chat_id: chatId,
+    text,
+    reply_markup: { remove_keyboard: true },
+    disable_web_page_preview: true,
+    ...extra
+  });
 }
 function displayName(user: TelegramUser): string {
   const username = typeof user.username === "string" ? user.username.replace(/^@/, "").trim() : "";
