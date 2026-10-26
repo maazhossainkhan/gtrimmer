@@ -248,33 +248,29 @@ async function configureTelegramMenu(chatId: number) {
     { command: "help", description: "ℹ️ How to use Google Trim" }
   ];
 
-  // Publish commands to all private chats as well as the default scope, so an
-  // older, narrower command scope cannot shadow this menu.
   try {
     await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
     await telegramApi("setMyCommands", { commands, scope: { type: "all_private_chats" } });
-    const actualDefault = await telegramApi("getMyCommands", { scope: { type: "default" } });
-    const actualPrivate = await telegramApi("getMyCommands", { scope: { type: "all_private_chats" } });
-    console.log("G-Trimmer default commands verified:", JSON.stringify((actualDefault ?? []).map((item: any) => item.command)));
-    console.log("G-Trimmer private-chat commands verified:", JSON.stringify((actualPrivate ?? []).map((item: any) => item.command)));
   } catch (error) {
-    console.warn("Could not set/verify bot commands:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not configure bot commands:", error instanceof Error ? error.message : "unknown error");
   }
 
-  // Explicitly force the visible menu button to open the command list, not a Mini App.
+  // Restore the previous compact Mini App icon/button beside the message field.
+  // Keep this setting at both default and current-chat levels to avoid overrides.
+  const miniAppMenu = { type: "web_app", text: "🖥️", web_app: { url: MINI_APP_URL } };
   try {
-    await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
+    await telegramApi("setChatMenuButton", { menu_button: miniAppMenu });
     const globalMenu = await telegramApi("getChatMenuButton", {});
-    console.log("G-Trimmer global command Menu verified:", JSON.stringify(globalMenu));
+    console.log("G-Trimmer global Mini App menu verified:", JSON.stringify(globalMenu));
   } catch (error) {
-    console.warn("Could not set/verify global command Menu:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify global Mini App menu:", error instanceof Error ? error.message : "unknown error");
   }
   try {
-    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
+    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: miniAppMenu });
     const chatMenu = await telegramApi("getChatMenuButton", { chat_id: chatId });
-    console.log("G-Trimmer chat command Menu verified:", JSON.stringify(chatMenu));
+    console.log("G-Trimmer chat Mini App menu verified:", JSON.stringify(chatMenu));
   } catch (error) {
-    console.warn("Could not set/verify chat command Menu:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify chat Mini App menu:", error instanceof Error ? error.message : "unknown error");
   }
 }
 
