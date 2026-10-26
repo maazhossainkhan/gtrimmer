@@ -239,7 +239,7 @@ async function notifyModeratorGranted(telegramId: unknown, username: unknown, di
   const display = typeof displayName === "string" ? displayName.trim() : "";
   const recipient = display || (handle ? "@" + handle : "there");
   try {
-    const response = await fetch("https://api.telegram.org/botBOT_TOKEN/sendMessage", {
+    const response = await fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
