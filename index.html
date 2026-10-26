@@ -24,13 +24,14 @@
       if (notice) notice.hidden = true;
     }, true);
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=contact-support-1">
+  <link rel="stylesheet" href="css/styles.css?v=donation-1">
   <script src="https://telegram.org/js/telegram-web-app.js?64"></script>
   <script src="js/telegram-mini-app.js?v=miniapp-ui-2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/supabase-config.js" defer></script>
   <script src="js/auth.js?v=shadow-ember-1" defer></script>
   <script src="js/app.js" defer></script>
+  <script src="js/donate.js?v=donate-1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -40,6 +41,9 @@
         <span class="brand-name">Google Trim <span>by Shadow</span></span>
       </a>
       <div class="header-actions">
+        <button class="donate-button" id="donateButton" type="button" aria-haspopup="dialog" aria-controls="donateDialog">
+          <span aria-hidden="true">♥</span><span>Donate</span>
+        </button>
         <a class="contact-button" href="https://t.me/maazhossainkhan" target="_blank" rel="noopener noreferrer" aria-label="Contact support on Telegram">
           <span aria-hidden="true">✉</span><span>Contact Support</span>
         </a>
@@ -48,6 +52,58 @@
       </div>
     </div>
   </header>
+
+  <dialog class="donate-dialog" id="donateDialog" aria-labelledby="donateTitle">
+    <div class="donate-dialog-header">
+      <div>
+        <div class="donate-eyebrow">SUPPORT THE PROJECT</div>
+        <h2 id="donateTitle">Donate to Google Trim</h2>
+        <p>Thank you for supporting Google Trim by Shadow. Choose either donation method below.</p>
+      </div>
+      <button class="donate-close-button" id="donateCloseButton" type="button" aria-label="Close donation window">×</button>
+    </div>
+
+    <div class="donate-methods">
+      <section class="donate-method-card" aria-labelledby="binancePayTitle">
+        <div class="donate-method-heading">
+          <span class="donate-method-icon pay-icon" aria-hidden="true">₿</span>
+          <div>
+            <h3 id="binancePayTitle">Binance Pay</h3>
+            <p>Send USDT using Binance Pay UID</p>
+          </div>
+        </div>
+        <div class="donate-detail-label">Binance Pay UID</div>
+        <code class="donate-detail-value">731347605</code>
+        <button class="donate-copy-button" type="button" data-copy-value="731347605" data-copy-label="Binance Pay UID">
+          <span aria-hidden="true">⧉</span> Copy Binance Pay UID
+        </button>
+        <p class="donate-method-note">In Binance, choose Pay and send to this UID. Confirm the recipient before sending.</p>
+      </section>
+
+      <section class="donate-method-card" aria-labelledby="bep20Title">
+        <div class="donate-method-heading">
+          <span class="donate-method-icon chain-icon" aria-hidden="true">↗</span>
+          <div>
+            <h3 id="bep20Title">USDT · BEP20</h3>
+            <p>On-chain donation via BNB Smart Chain</p>
+          </div>
+        </div>
+        <div class="donate-detail-label">Wallet address</div>
+        <code class="donate-detail-value">0xdf0587f04b6126ba1fd03b4391e17a99b717823b</code>
+        <button class="donate-copy-button" type="button" data-copy-value="0xdf0587f04b6126ba1fd03b4391e17a99b717823b" data-copy-label="BEP20 wallet address">
+          <span aria-hidden="true">⧉</span> Copy BEP20 address
+        </button>
+        <p class="donate-method-note">Send USDT only and select BNB Smart Chain (BEP20) as the network.</p>
+      </section>
+    </div>
+
+    <p class="donate-warning"><span aria-hidden="true">⚠</span><span>For on-chain donations, the sending network must be <strong>BNB Smart Chain (BEP20)</strong>. Sending through a different network can result in lost funds. Double-check the network and address before confirming.</span></p>
+    <p class="donate-copy-feedback" id="donateCopyFeedback" role="status" aria-live="polite"></p>
+    <div class="donate-dialog-footer">
+      <a href="https://www.binance.com/" target="_blank" rel="noopener noreferrer">Open Binance ↗</a>
+      <button class="donate-done-button" id="donateDoneButton" type="button">Done</button>
+    </div>
+  </dialog>
 
   <section class="setup-notice" id="setupNotice" hidden aria-labelledby="setupTitle">
     <div class="setup-icon" aria-hidden="true">⚙</div>
