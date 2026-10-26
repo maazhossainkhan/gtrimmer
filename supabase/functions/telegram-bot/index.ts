@@ -194,7 +194,7 @@ async function configureTelegramMenu(chatId: number) {
   try {
     await telegramApi("setChatMenuButton", {
       chat_id: chatId,
-      menu_button: { type: "web_app", text: "🚀 Open Google Trim", web_app: { url: MINI_APP_URL } }
+      menu_button: { type: "web_app", text: "🚀", web_app: { url: MINI_APP_URL } }
     });
   } catch (error) { console.warn("Could not set per-chat Mini App menu button:", error); }
 }
