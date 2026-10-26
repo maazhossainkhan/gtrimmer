@@ -57,20 +57,29 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
 function tr(lang: BotLanguage, key: string): string { return WORDS[lang][key] ?? WORDS.en[key] ?? key; }
 function isButton(text: string, key: string): boolean { return text === WORDS.en[key] || text === WORDS.bn[key]; }
 function fillText(value: string, args: Record<string, string>): string { return value.replace(/\{(\w+)\}/g, (_m, key) => args[key] ?? ""); }
+const LANGUAGE_CACHE_TTL_MS = 60_000;
+const languageCache = new Map<string, { language: BotLanguage; expiresAt: number }>();
 async function getLanguage(id: string): Promise<BotLanguage> {
+  const cached = languageCache.get(id);
+  if (cached && cached.expiresAt > Date.now()) return cached.language;
   try {
     if (!db) return "en";
-    const { data, error } = await db.from("gtrimmer_bot_user_preferences").select("language").eq("telegram_id", id).maybeSingle();
+    const { data, error } = await db.from("gtrimmer_bot_user_preferences")
+      .select("language").eq("telegram_id", id).maybeSingle();
     if (error) return "en";
-    return data?.language === "bn" ? "bn" : "en";
+    const language: BotLanguage = data?.language === "bn" ? "bn" : "en";
+    languageCache.set(id, { language, expiresAt: Date.now() + LANGUAGE_CACHE_TTL_MS });
+    return language;
   } catch { return "en"; }
 }
 async function saveLanguage(id: string, language: BotLanguage): Promise<void> {
   if (!db) throw new Error("Database not configured");
-  const { error } = await db.from("gtrimmer_bot_user_preferences").upsert({ telegram_id: id, language, updated_at: new Date().toISOString() }, { onConflict: "telegram_id" });
+  const { error } = await db.from("gtrimmer_bot_user_preferences").upsert({
+    telegram_id: id, language, updated_at: new Date().toISOString()
+  }, { onConflict: "telegram_id" });
   if (error) throw new Error("Could not save language preference");
+  languageCache.set(id, { language, expiresAt: Date.now() + LANGUAGE_CACHE_TTL_MS });
 }
-
 
 function json(payload: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
@@ -104,7 +113,7 @@ function keyboard(lang: BotLanguage = "en") {
       [{ text: tr(lang, "contact") }, { text: tr(lang, "donate") }]
     ],
     resize_keyboard: true,
-    is_persistent: false,
+    is_persistent: true,
     one_time_keyboard: false,
     input_field_placeholder: tr(lang, "placeholder")
   };
@@ -147,45 +156,46 @@ function convertUrl(rawValue: string): { token: string; url: string } | null {
 }
 async function getAccessState(telegramId: string): Promise<AccessState> {
   if (!db) throw new Error("Bot database access is not configured.");
+  if (ADMIN_TELEGRAM_IDS.has(telegramId)) return { state: "admin" };
 
-  if (ADMIN_TELEGRAM_IDS.has(telegramId)) {
-    const { error } = await db.from("gtrimmer_mini_access_users").upsert({
-      telegram_id: telegramId,
-      username: null,
-      display_name: "Telegram administrator",
-      status: "active",
-      is_admin: true,
-      updated_at: new Date().toISOString()
-    }, { onConflict: "telegram_id" });
-    if (error) throw new Error("Could not initialize configured admin.");
-    return { state: "admin" };
-  }
-
-  const { data: legacyUser, error: legacyError } = await db.from("gtrimmer_access_users")
-    .select("telegram_id, username, status, is_admin")
-    .eq("telegram_id", telegramId).limit(1);
+  // Read legacy and Mini App access in parallel; preserve legacy-store precedence.
+  const [
+    { data: legacyUsers, error: legacyError },
+    { data: miniUser, error: miniUserError }
+  ] = await Promise.all([
+    db.from("gtrimmer_access_users")
+      .select("telegram_id, username, status, is_admin")
+      .eq("telegram_id", telegramId).limit(1),
+    db.from("gtrimmer_mini_access_users")
+      .select("telegram_id, username, status, is_admin")
+      .eq("telegram_id", telegramId).maybeSingle()
+  ]);
   if (legacyError) throw new Error("Could not read existing access status.");
-  if (legacyUser?.[0]) {
-    const record = legacyUser[0];
-    if (record.status !== "active") return { state: "revoked", username: record.username };
-    return { state: record.is_admin ? "admin" : "active", username: record.username };
-  }
-
-  const { data: miniUser, error: miniUserError } = await db.from("gtrimmer_mini_access_users")
-    .select("telegram_id, username, status, is_admin").eq("telegram_id", telegramId).maybeSingle();
   if (miniUserError) throw new Error("Could not read Mini App access status.");
+
+  const legacyUser = legacyUsers?.[0];
+  if (legacyUser) {
+    if (legacyUser.status !== "active") return { state: "revoked", username: legacyUser.username };
+    return { state: legacyUser.is_admin ? "admin" : "active", username: legacyUser.username };
+  }
   if (miniUser) {
     if (miniUser.status !== "active") return { state: "revoked", username: miniUser.username };
     return { state: miniUser.is_admin ? "admin" : "active", username: miniUser.username };
   }
 
-  const { data: miniRequest, error: miniRequestError } = await db.from("gtrimmer_mini_access_requests")
-    .select("status, username").eq("telegram_id", telegramId).maybeSingle();
+  // For first-time users, check both request stores in parallel as well.
+  const [
+    { data: miniRequest, error: miniRequestError },
+    { data: legacyRequests, error: legacyRequestError }
+  ] = await Promise.all([
+    db.from("gtrimmer_mini_access_requests")
+      .select("status, username").eq("telegram_id", telegramId).maybeSingle(),
+    db.from("gtrimmer_access_requests")
+      .select("status, username").eq("telegram_id", telegramId).limit(1)
+  ]);
   if (miniRequestError) throw new Error("Could not read Mini App request status.");
-  const { data: legacyRequest, error: legacyRequestError } = await db.from("gtrimmer_access_requests")
-    .select("status, username").eq("telegram_id", telegramId).limit(1);
   if (legacyRequestError) throw new Error("Could not read existing request status.");
-  const request = miniRequest ?? legacyRequest?.[0] ?? null;
+  const request = miniRequest ?? legacyRequests?.[0] ?? null;
   if (request?.status === "pending") return { state: "pending", username: request.username };
   if (request?.status === "rejected") return { state: "rejected", username: request.username };
   return { state: "needs_request", username: request?.username ?? null };
@@ -322,11 +332,11 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
   }
   const lang = await getLanguage(String(user.id));
 
-  if (!configuredMenuChats.has(chatId)) {
-    const configured = await configureTelegramMenu(chatId);
-    if (configured) configuredMenuChats.add(chatId);
-  }
   if (command === "/start" || isButton(text, "start")) {
+    if (!configuredMenuChats.has(chatId)) {
+      const configured = await configureTelegramMenu(chatId);
+      if (configured) configuredMenuChats.add(chatId);
+    }
     await sendMessage(chatId, fillText(tr(lang, "welcome"), { name: displayName(user) }));
     return;
   }
@@ -378,6 +388,7 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
     return;
   }
 
+  const conversionStartedAt = Date.now();
   const converted = convertUrl(text);
   if (converted) {
     const access = await getAccessState(String(user.id));
@@ -390,6 +401,7 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
     if (converted.url.length <= 256) linkButtons.push({ text: tr(lang, "copyConverted"), copy_text: { text: converted.url } });
     linkButtons.push({ text: tr(lang, "openConverted"), url: converted.url });
     await sendMessage(chatId, fillText(tr(lang, "converted"), { url: converted.url }), { reply_markup: { inline_keyboard: [linkButtons] } });
+    console.info("Share link conversion response sent in", Date.now() - conversionStartedAt, "ms");
     return;
   }
   await sendMessage(chatId, tr(lang, "unknown"));
