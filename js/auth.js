@@ -24,7 +24,7 @@
   const revokedAccessDropdown = document.getElementById("revokedAccessDropdown");
   let client = null;
   let currentUser = null;
-  let currentAccess = { authorized: false, isAdmin: false };
+  let currentAccess = { authorized: false, isAdmin: false, isMasterAdmin: false };
   let readyResolved = false;
   let resolveReady;
   let refreshSequence = 0;
@@ -157,6 +157,15 @@
       const data = await invokeServer("admin-manage-access", { admin_action: "list" });
       const requests = Array.isArray(data.requests) ? data.requests : [];
       const users = Array.isArray(data.users) ? data.users : [];
+      const isMasterAdmin = currentAccess.isMasterAdmin && data.role === "master";
+      if (authorizedAccessDropdown) authorizedAccessDropdown.hidden = !isMasterAdmin;
+      if (revokedAccessDropdown) revokedAccessDropdown.hidden = !isMasterAdmin;
+      const revokedActions = clearRevokedButton ? clearRevokedButton.closest(".revoked-list-actions") : null;
+      if (revokedActions) revokedActions.hidden = !isMasterAdmin;
+      const panelEyebrow = adminPanel.querySelector(".eyebrow");
+      const panelTitle = document.getElementById("adminTitle");
+      if (panelEyebrow) panelEyebrow.textContent = isMasterAdmin ? "Master Admin" : "Moderator Admin";
+      if (panelTitle) panelTitle.textContent = isMasterAdmin ? "Access management" : "Request review";
       const authorizedUsers = users.filter(user => user.status === "active");
       const revokedUsers = users.filter(user => user.status !== "active");
 
@@ -217,15 +226,43 @@
           (user.telegram_id && currentUser.telegram_id && String(user.telegram_id) === String(currentUser.telegram_id)));
         const canChange = !user.is_admin && !isSelf;
         const meta = (user.telegram_id ? "Telegram ID " + user.telegram_id + " · " : "") +
-          "Supabase user " + user.user_id + " · " + (user.is_admin ? "Administrator" : "Authorized");
-        activeUsersList.appendChild(createListItem(username, meta, canChange ? "Revoke" : "", async function () {
+          "Supabase user " + user.user_id + " · " +
+          (user.is_admin ? "Master Admin" : (user.is_moderator ? "Moderator Admin" : "Authorized"));
+        const row = createListItem(username, meta, canChange ? "Revoke" : "", async function () {
           if (!window.confirm("Revoke converter access for " + username + "?")) return;
           try {
             await adminAction("revoke", user.user_id);
             setAdminFeedback("Revoked access for " + username + ". Moved to Revoked accounts.", "success");
             await refreshAdminLists();
           } catch (error) { setAdminFeedback(error.message, "error"); }
-        }, true));
+        }, true);
+        if (isMasterAdmin && canChange && user.telegram_id) {
+          const roleButton = document.createElement("button");
+          roleButton.type = "button";
+          roleButton.className = user.is_moderator ? "danger-small-button" : "moderator-small-button";
+          roleButton.textContent = user.is_moderator ? "Remove moderator" : "Make moderator";
+          roleButton.addEventListener("click", async function () {
+            const action = user.is_moderator ? "revoke-moderator" : "grant-moderator";
+            const prompt = user.is_moderator
+              ? "Remove Moderator Admin permission from " + username + "?"
+              : "Allow " + username + " to only approve/reject pending access requests?";
+            if (!window.confirm(prompt)) return;
+            roleButton.disabled = true;
+            try {
+              await invokeServer("admin-manage-access", { admin_action: action, telegram_id: String(user.telegram_id) });
+              setAdminFeedback(
+                (user.is_moderator ? "Removed Moderator Admin permission from " : "Granted Moderator Admin permission to ") + username + ".",
+                "success"
+              );
+              await refreshAdminLists();
+            } catch (error) {
+              setAdminFeedback(error.message, "error");
+              roleButton.disabled = false;
+            }
+          });
+          row.appendChild(roleButton);
+        }
+        activeUsersList.appendChild(row);
       });
 
       if (!revokedUsers.length) {
@@ -300,7 +337,7 @@
       currentUser = { user_id: user.id };
     }
     if (!user) {
-      currentAccess = { authorized: false, isAdmin: false };
+      currentAccess = { authorized: false, isAdmin: false, isMasterAdmin: false };
       setIdentity(null);
       adminPanel.hidden = true;
       setGate("Sign in with Telegram to request access. The administrator will approve your verified Telegram account.", "");
@@ -322,7 +359,8 @@
       setIdentity(currentUser);
       currentAccess = {
         authorized: data.state === "active" || data.state === "admin",
-        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin),
+        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin) || data.role === "moderator",
+        isMasterAdmin: data.role === "master" || (data.state === "admin" && data.role !== "moderator"),
         userId: user.id
       };
       if (data.state === "active" || data.state === "admin") {
@@ -360,7 +398,7 @@
         finishReady(currentAccess);
         return;
       }
-      currentAccess = { authorized: false, isAdmin: false };
+      currentAccess = { authorized: false, isAdmin: false, isMasterAdmin: false };
       setIdentity(currentUser);
       setGate("Could not verify access with the server: " + error.message, "error");
       finishReady(currentAccess);
@@ -432,7 +470,8 @@
       setIdentity(currentUser);
       currentAccess = {
         authorized: data.state === "active" || data.state === "admin",
-        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin),
+        isAdmin: data.state === "admin" || !!(data.user && data.user.is_admin) || data.role === "moderator",
+        isMasterAdmin: data.role === "master" || (data.state === "admin" && data.role !== "moderator"),
         userId: data.user && data.user.user_id
       };
       if (data.state === "active" || data.state === "admin") {
@@ -459,7 +498,7 @@
       }
       finishReady(currentAccess);
     } catch (error) {
-      currentAccess = { authorized: false, isAdmin: false };
+      currentAccess = { authorized: false, isAdmin: false, isMasterAdmin: false };
       setGate(error.message || "Could not verify your Telegram identity.", "error");
       signInButton.hidden = true;
       requestAccessButton.hidden = true;
@@ -521,7 +560,7 @@
         const { error } = await client.auth.signOut();
         if (error) throw error;
         currentUser = null;
-        currentAccess = { authorized: false, isAdmin: false };
+        currentAccess = { authorized: false, isAdmin: false, isMasterAdmin: false };
         adminPanel.hidden = true;
         await setUserState(null);
       } catch (error) {
