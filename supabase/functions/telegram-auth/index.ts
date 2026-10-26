@@ -4,6 +4,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ADMIN_USER_IDS = new Set((Deno.env.get("ADMIN_USER_IDS") ?? "").split(",").map(v => v.trim().toLowerCase()).filter(Boolean));
 const ADMIN_TELEGRAM_IDS = new Set((Deno.env.get("ADMIN_TELEGRAM_IDS") ?? "").split(",").map(v => v.trim()).filter(v => /^\d+$/.test(v)));
+const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const MINI_APP_URL = "https://turlx.com/";
 const ALLOWED_ORIGINS = new Set(["https://turlx.com", "https://www.turlx.com", "http://localhost:8000", "http://127.0.0.1:8000"]);
 const db = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -118,6 +120,44 @@ async function requireAdmin(identity: ReturnType<typeof identityFromUser>) {
   if (error) throw new HttpError("Could not verify administrator access.", 500);
   if (!data || data.status !== "active" || !data.is_admin) throw new HttpError("Administrator access is required for this action.", 403);
 }
+
+async function notifyAccessApproved(telegramId: unknown, username: unknown, displayName: unknown): Promise<void> {
+  const chatId = String(telegramId ?? "").trim();
+  if (!TELEGRAM_BOT_TOKEN || !/^\d{1,20}$/.test(chatId)) {
+    console.warn("Skipping approval notification: Telegram bot token or valid chat ID is unavailable.");
+    return;
+  }
+  const handle = typeof username === "string" ? username.replace(/^@/, "").trim() : "";
+  const display = typeof displayName === "string" ? displayName.trim() : "";
+  const recipient = handle ? "@" + handle : (display || "there");
+  try {
+    const response = await fetch("https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: "🎉 Congratulations, " + recipient + "!\\n\\n" +
+          "Your access to Google Trim by Shadow has been approved. You can now use the converter.\\n\\n" +
+          "Tap the button below to get started.",
+        reply_markup: {
+          inline_keyboard: [[{
+            text: "🚀 Open Google Trim",
+            style: "primary",
+            web_app: { url: MINI_APP_URL }
+          }]]
+        },
+        disable_web_page_preview: true
+      })
+    });
+    const result: any = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok) {
+      console.warn("Could not send Telegram approval notification:", result?.description ?? "Telegram API request failed.");
+    }
+  } catch (error) {
+    console.warn("Could not send Telegram approval notification:", error instanceof Error ? error.message : "unknown error");
+  }
+}
+
 async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: Record<string, unknown>) {
   requireDatabase();
   await requireAdmin(identity);
@@ -241,6 +281,7 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
         reviewed_at: new Date().toISOString(), reviewed_by: identity.user_id
       }).eq("telegram_id", targetTelegramId).eq("status", "pending");
       if (legacyError) throw new HttpError("The Mini App request was updated, but the legacy request could not be synchronized.", 500);
+      if (action === "approve") await notifyAccessApproved(targetTelegramId, request.username, request.display_name);
       return { success: true, message: action === "approve" ? "Telegram account approved." : "Telegram request rejected." };
     }
     if (action === "revoke" || action === "restore") {
@@ -282,6 +323,7 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
       reviewed_at: new Date().toISOString(), reviewed_by: identity.user_id
     }).eq("user_id", targetId);
     if (error) throw new HttpError("Could not update the request status.", 500);
+    if (action === "approve") await notifyAccessApproved(request.telegram_id, request.username, request.display_name);
     return { success: true, message: action === "approve" ? "Account approved." : "Request rejected." };
   }
   if (action === "revoke" || action === "restore") {
