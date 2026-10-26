@@ -228,6 +228,44 @@ async function notifyAccessApproved(telegramId: unknown, username: unknown, disp
   }
 }
 
+
+async function notifyModeratorGranted(telegramId: unknown, username: unknown, displayName: unknown): Promise<void> {
+  const chatId = String(telegramId ?? "").trim();
+  if (!BOT_TOKEN || !/^\d{1,20}$/.test(chatId)) {
+    console.warn("Skipping moderator welcome message: bot token or valid Telegram ID is unavailable.");
+    return;
+  }
+  const handle = typeof username === "string" ? username.replace(/^@/, "").trim() : "";
+  const display = typeof displayName === "string" ? displayName.trim() : "";
+  const recipient = handle ? "@" + handle : (display || "there");
+  try {
+    const response = await fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: "🎉 Congratulations, " + recipient + "!\\n\\n" +
+          "You have been appointed as a Moderator Admin for Google Trim by Shadow.\\n\\n" +
+          "You can review pending access requests and approve or reject them. You cannot revoke user access, manage administrator roles, or change other settings.\\n\\n" +
+          "Please open Google Trim to start reviewing requests.",
+        reply_markup: {
+          inline_keyboard: [[{
+            text: "🖥️ Open Google Trim",
+            web_app: { url: "https://turlx.com/" }
+          }]]
+        },
+        disable_web_page_preview: true
+      })
+    });
+    const result: any = await response.json().catch(() => null);
+    if (!response.ok || !result?.ok) {
+      console.warn("Could not send moderator welcome message:", result?.description ?? "Telegram API request failed.");
+    }
+  } catch (error) {
+    console.warn("Could not send moderator welcome message:", error instanceof Error ? error.message : "unknown error");
+  }
+}
+
 async function manageModerator(identity: Identity, action: string, rawTelegramId: unknown) {
   const telegramId = String(rawTelegramId ?? "").trim();
   if (!/^\d{1,20}$/.test(telegramId)) throw new HttpError("Enter a valid Telegram user ID.");
@@ -259,6 +297,7 @@ async function manageModerator(identity: Identity, action: string, rawTelegramId
     granted_at: now, revoked_at: null, updated_at: now
   }, { onConflict: "telegram_id" });
   if (error) throw new HttpError("Could not grant moderator permission.", 500);
+  await notifyModeratorGranted(telegramId, active.username, active.display_name);
   return { success: true, message: "Moderator permission granted." };
 }
 
