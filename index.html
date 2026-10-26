@@ -24,12 +24,12 @@
       if (notice) notice.hidden = true;
     }, true);
   </script>
-  <link rel="stylesheet" href="css/styles.css?v=moderator-roles-1">
+  <link rel="stylesheet" href="css/styles.css?v=admin-labels-1">
   <script src="https://telegram.org/js/telegram-web-app.js?64"></script>
   <script src="js/telegram-mini-app.js?v=miniapp-ui-2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/supabase-config.js" defer></script>
-  <script src="js/auth.js?v=moderator-roles-1" defer></script>
+  <script src="js/auth.js?v=admin-labels-1" defer></script>
   <script src="js/app.js" defer></script>
   <script src="js/donate.js?v=donate-1" defer></script>
 </head>
@@ -139,7 +139,7 @@
         <div>
           <div class="eyebrow"><span class="eyebrow-star" aria-hidden="true">✦</span> Administrator</div>
           <h2 id="adminTitle">Access management</h2>
-          <p>Master Admin controls account permissions and moderator roles. Moderator Admins can only approve or reject pending requests.</p>
+          <p>Admins can review pending access requests. The main Admin controls account permissions; review-only Admin access cannot change account permissions.</p>
         </div>
         <button class="secondary-button" id="adminRefreshButton" type="button">Refresh list</button>
       </div>
