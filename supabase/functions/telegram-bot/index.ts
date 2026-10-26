@@ -225,12 +225,12 @@ async function handleText(chatId: number, telegramUser: TelegramUser, messageTex
   if (command === "/donate" || text === "💛 Donate") {
     await sendMessage(
       chatId,
-      "💛 Support Google Trim by Shadow\\n\\n" +
-      "Choose either donation method:\\n\\n" +
-      "1) Binance Pay (USDT)\\n" +
-      "UID: " + BINANCE_PAY_UID + "\\n\\n" +
-      "2) USDT (BEP20)\\n" +
-      "Address: " + USDT_BEP20_ADDRESS + "\\n\\n" +
+      "💛 Support Google Trim by Shadow\n\n" +
+      "Choose either donation method:\n\n" +
+      "1) Binance Pay (USDT)\n" +
+      "UID: " + BINANCE_PAY_UID + "\n\n" +
+      "2) USDT (BEP20)\n" +
+      "Address: " + USDT_BEP20_ADDRESS + "\n\n" +
       "⚠️ For on-chain transfers, choose BNB Smart Chain (BEP20) exactly. Sending through another network may result in lost funds. Please double-check before confirming.",
       { reply_markup: { inline_keyboard: [
         [{ text: "📋 Copy Binance Pay UID", style: "success", copy_text: { text: BINANCE_PAY_UID } }],
