@@ -32,7 +32,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
   accessTitle:"🔐 Your access status", admin:"Administrator — full access enabled.", active:"Approved — converter access is enabled.", revoked:"Revoked — access is disabled. Contact the administrator.", pending:"Pending — waiting for administrator approval.", rejected:"Rejected — you may request access again.", needs:"Not approved yet — use Request Access.",
   reqActive:"✅ Your account is already approved.", reqPending:"⏳ Your request is already pending. Please wait.", reqRevoked:"⛔ Your access has been revoked. Contact the administrator.", reqSubmitted:"✅ Your access request was sent. You can convert after approval.",
   convPending:"⏳ Your request is pending approval.", convRevoked:"⛔ Your access was revoked. Contact the administrator.", convLocked:"🔒 Converter access is required. Tap Request Access and wait for approval.", convPrompt:"Send your share.google URL in the next message, or paste it here whenever you want to convert.",
-  converted:"✅ Converted link:\n\n{url}\n\nUse the buttons below to copy or open the result.", copyConverted:"📋 Copy converted link", openConverted:"🔵 Open converted link",
+  converted:"✅ Converted link:\n\n{url}", copyConverted:"📋 Copy converted link", openConverted:"🔵 Open converted link",
   deniedPending:"Your request is pending approval.", deniedRevoked:"Your access was revoked. Contact the administrator.", denied:"You need administrator approval before conversion. Tap Request Access below.",
   unknown:"I didn't recognize that command or link.\n\nTap Convert Link and send a valid share.google URL, or tap Help.", error:"Sorry, I couldn't complete that request. Please try again, or tap Help."
  },
@@ -49,7 +49,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
   accessTitle:"🔐 আপনার অ্যাক্সেসের অবস্থা", admin:"অ্যাডমিন — পূর্ণ অ্যাক্সেস চালু আছে।", active:"অনুমোদিত — কনভার্টার ব্যবহার করতে পারবেন।", revoked:"অ্যাক্সেস বাতিল — অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", pending:"Pending — আপনার অনুরোধ অ্যাডমিনের অনুমোদনের অপেক্ষায় আছে।", rejected:"অনুরোধ বাতিল হয়েছে — চাইলে আবার আবেদন করতে পারেন।", needs:"এখনো অনুমোদন পাননি — অ্যাক্সেসের অনুরোধ বাটনে চাপ দিন।",
   reqActive:"✅ আপনার অ্যাকাউন্ট ইতোমধ্যে অনুমোদিত।", reqPending:"⏳ আপনার অনুরোধ Pending আছে। অ্যাডমিনের অনুমোদনের জন্য অপেক্ষা করুন।", reqRevoked:"⛔ আপনার অ্যাক্সেস বাতিল হয়েছে। অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", reqSubmitted:"✅ অ্যাক্সেসের অনুরোধ অ্যাডমিনের কাছে পাঠানো হয়েছে। অনুমোদনের পর ব্যবহার করতে পারবেন।",
   convPending:"⏳ আপনার অনুরোধ অনুমোদনের অপেক্ষায় আছে।", convRevoked:"⛔ আপনার অ্যাক্সেস বাতিল হয়েছে। অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", convLocked:"🔒 লিংক রূপান্তর করতে অ্যাক্সেস লাগবে। 📩 অ্যাক্সেসের অনুরোধ বাটনে চাপ দিন।", convPrompt:"পরের মেসেজে share.google URL পাঠান। চাইলে যেকোনো সময় সরাসরি এই চ্যাটেও লিংক পাঠাতে পারেন।",
-  converted:"✅ রূপান্তরিত লিংক:\n\n{url}\n\nলিংক কপি বা খুলতে নিচের বাটন ব্যবহার করুন।", copyConverted:"📋 রূপান্তরিত লিংক কপি", openConverted:"🔵 রূপান্তরিত লিংক খুলুন",
+  converted:"✅ রূপান্তরিত লিংক:\n\n{url}", copyConverted:"📋 রূপান্তরিত লিংক কপি", openConverted:"🔵 রূপান্তরিত লিংক খুলুন",
   deniedPending:"আপনার অনুরোধ অ্যাডমিনের অনুমোদনের অপেক্ষায় আছে।", deniedRevoked:"আপনার অ্যাক্সেস বাতিল হয়েছে। অ্যাডমিনের সঙ্গে যোগাযোগ করুন।", denied:"লিংক রূপান্তরের আগে অ্যাডমিনের অনুমোদন লাগবে। নিচের 📩 অ্যাক্সেসের অনুরোধ বাটনে চাপ দিন।",
   unknown:"কমান্ড বা লিংকটি বুঝতে পারিনি।\n\n🔗 লিংক রূপান্তর বাটনে চাপ দিয়ে সঠিক share.google URL পাঠান, অথবা ℹ️ সাহায্য চাপুন।", error:"দুঃখিত, এই মুহূর্তে কাজটি সম্পন্ন করা যায়নি। একটু পরে আবার চেষ্টা করুন, অথবা ℹ️ সাহায্য চাপুন।"
  }
@@ -123,9 +123,6 @@ async function sendMessage(chatId: number, text: string, extra: Record<string, u
   const markup = extra.reply_markup as Record<string, unknown> | undefined;
   const hasInlineKeyboard = !!markup && Array.isArray(markup.inline_keyboard);
 
-  // Only one reply_markup type can be attached to a Telegram message. When an
-  // inline-button message is sent, follow it with a short message carrying the
-  // persistent reply keyboard so users can reopen the keyboard without /start.
   const sent = await telegramApi("sendMessage", {
     chat_id: chatId,
     text,
@@ -133,6 +130,26 @@ async function sendMessage(chatId: number, text: string, extra: Record<string, u
     disable_web_page_preview: true,
     ...extra
   });
+
+  // Telegram allows only one markup type per message. If an inline copy button is
+  // attached to the result, re-apply the reply keyboard with an invisible character,
+  // then delete that helper message so no extra visible text is added.
+  if (hasInlineKeyboard) {
+    try {
+      const helper = await telegramApi("sendMessage", {
+        chat_id: chatId,
+        text: "\u2063",
+        reply_markup: keyboard(lang),
+        disable_web_page_preview: true
+      });
+      const helperMessageId = helper?.message_id;
+      if (Number.isSafeInteger(helperMessageId)) {
+        await telegramApi("deleteMessage", { chat_id: chatId, message_id: helperMessageId });
+      }
+    } catch (error) {
+      console.warn("Could not restore keyboard after inline message:", error instanceof Error ? error.message : "unknown error");
+    }
+  }
   return sent;
 }
 function displayName(user: TelegramUser): string {
@@ -356,8 +373,8 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
       // because Telegram cannot put both keyboard types on a single message.
       const linkButtons: Record<string, unknown>[] = [];
       if (candidate.url.length <= 256) {
-        // A single clipboard icon only—no button label and no separate Open button.
-        linkButtons.push({ text: "📋", copy_text: { text: candidate.url } });
+        // Icon-only clipboard control with Telegram's success (green) button style.
+        linkButtons.push({ text: "📋", style: "success", copy_text: { text: candidate.url } });
       }
       await sendMessage(
         chatId,
