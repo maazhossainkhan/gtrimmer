@@ -89,14 +89,14 @@ async function telegramApi(method: string, payload: Record<string, unknown>): Pr
   });
   let body: any;
   try { body = await response.json(); } catch { throw new Error("Telegram API returned invalid JSON."); }
-  if (!response.ok || !body?.ok) throw new Error("Telegram API call failed for " + method + ".");
+  if (!response.ok || !body?.ok) throw new Error("Telegram API call failed for " + method + ": " + String(body?.description ?? response.status));
   return body.result;
 }
 
 function keyboard(lang: BotLanguage = "en") {
   return {
     keyboard: [
-      [{ text: tr(lang, "convert") }],
+      [{ text: tr(lang, "open"), web_app: { url: MINI_APP_URL } }, { text: tr(lang, "convert") }],
       [{ text: tr(lang, "access") }, { text: tr(lang, "request") }],
       [{ text: tr(lang, "help") }, { text: tr(lang, "contact") }],
       [{ text: tr(lang, "donate") }]
@@ -108,13 +108,13 @@ function keyboard(lang: BotLanguage = "en") {
   };
 }
 async function sendMessage(chatId: number, text: string, extra: Record<string, unknown> = {}) {
-  // Do not attach a persistent reply keyboard to every message. It hides the native
-  // left-side Menu/Commands affordance in some Telegram clients. Remove any old
-  // reply keyboard by default; specific inline keyboards in extra still override this.
+  const lang = await getLanguage(String(chatId));
+  // Restore the original reply keyboard. It is independent of Telegram's native
+  // left-side Menu/Commands button; inline markup in extra is preserved for actions.
   return await telegramApi("sendMessage", {
     chat_id: chatId,
     text,
-    reply_markup: { remove_keyboard: true },
+    reply_markup: keyboard(lang),
     disable_web_page_preview: true,
     ...extra
   });
@@ -251,19 +251,25 @@ async function configureTelegramMenu(chatId: number) {
   // Set the bot-wide command list so it appears in the left-side Menu/Commands panel,
   // then explicitly apply the commands menu to the current private chat.
   try {
-    await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
+    const result = await telegramApi("setMyCommands", { commands, scope: { type: "default" } });
+    console.log("G-Trimmer default bot commands configured:", Boolean(result));
+    const commandState = await telegramApi("getMyCommands", { scope: { type: "default" } });
+    console.log("G-Trimmer default commands verified:", JSON.stringify((commandState ?? []).map((c: any) => c.command)));
   } catch (error) {
-    console.warn("Could not set default bot commands:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify default bot commands:", error instanceof Error ? error.message : "unknown error");
   }
   try {
-    await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
+    const result = await telegramApi("setChatMenuButton", { menu_button: { type: "commands" } });
+    console.log("G-Trimmer default menu button set:", Boolean(result));
   } catch (error) {
     console.warn("Could not set default commands menu button:", error instanceof Error ? error.message : "unknown error");
   }
   try {
-    await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
+    const result = await telegramApi("setChatMenuButton", { chat_id: chatId, menu_button: { type: "commands" } });
+    const current = await telegramApi("getChatMenuButton", { chat_id: chatId });
+    console.log("G-Trimmer chat menu button set:", Boolean(result), "verified:", JSON.stringify(current));
   } catch (error) {
-    console.warn("Could not set chat commands menu button:", error instanceof Error ? error.message : "unknown error");
+    console.warn("Could not set/verify chat commands menu button:", error instanceof Error ? error.message : "unknown error");
   }
 }
 
@@ -295,15 +301,20 @@ async function handleCallback(query: any) {
   await sendMessage(chat.id, fillText(tr(lang, "welcome"), { name: displayName(user) }));
 }
 async function handleText(chatId: number, user: TelegramUser, messageText: string) {
-  if (!configuredMenuChats.has(chatId)) { await configureTelegramMenu(chatId); configuredMenuChats.add(chatId); }
   const text = messageText.trim();
   const first = text.split(/\s+/)[0];
   const command = first.split("@")[0].toLowerCase();
   const lang = await getLanguage(String(user.id));
 
   if (command === "/start" || isButton(text, "start")) {
+    await configureTelegramMenu(chatId);
+    configuredMenuChats.add(chatId);
     await sendMessage(chatId, fillText(tr(lang, "welcome"), { name: displayName(user) }));
     return;
+  }
+  if (!configuredMenuChats.has(chatId)) {
+    await configureTelegramMenu(chatId);
+    configuredMenuChats.add(chatId);
   }
   if (command === "/language" || command === "/lang" || isButton(text, "language")) {
     await sendLanguagePicker(chatId, lang);
