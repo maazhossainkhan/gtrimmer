@@ -120,36 +120,15 @@ function keyboard(lang: BotLanguage = "en") {
 }
 async function sendMessage(chatId: number, text: string, extra: Record<string, unknown> = {}, languageOverride?: BotLanguage) {
   const lang = languageOverride ?? await getLanguage(String(chatId));
-  const markup = extra.reply_markup as Record<string, unknown> | undefined;
-  const hasInlineKeyboard = !!markup && Array.isArray(markup.inline_keyboard);
-
-  const sent = await telegramApi("sendMessage", {
+  // Telegram can attach either inline or reply keyboard markup to one message.
+  // Do not send invisible follow-up messages: they create timestamped blank bubbles.
+  return await telegramApi("sendMessage", {
     chat_id: chatId,
     text,
     reply_markup: keyboard(lang),
     disable_web_page_preview: true,
     ...extra
   });
-
-  // Telegram allows only one markup type per message. Keep a separate invisible
-  // helper message with the reply keyboard after inline-copy results. Do not delete
-  // it: deleting the last reply-keyboard message can remove the keyboard toggle in
-  // some clients. The helper contains no readable text.
-  if (hasInlineKeyboard) {
-    try {
-      const helper = await telegramApi("sendMessage", {
-        chat_id: chatId,
-        text: "\u2063",
-        reply_markup: keyboard(lang),
-        disable_web_page_preview: true
-      });
-      // Intentionally keep this message. Its reply keyboard maintains the toggle.
-      void helper;
-    } catch (error) {
-      console.warn("Could not restore keyboard after inline message:", error instanceof Error ? error.message : "unknown error");
-    }
-  }
-  return sent;
 }
 function displayName(user: TelegramUser): string {
   const username = typeof user.username === "string" ? user.username.replace(/^@/, "").trim() : "";
