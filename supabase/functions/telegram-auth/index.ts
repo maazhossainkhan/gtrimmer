@@ -26,6 +26,8 @@ function corsHeaders(req: Request): HeadersInit {
 function respond(req: Request, payload: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: corsHeaders(req) });
 }
+type AdminRole = "master" | "moderator" | null;
+
 class HttpError extends Error {
   status: number;
   constructor(message: string, status = 400) { super(message); this.status = status; }
@@ -82,9 +84,28 @@ async function bootstrapAdmin(identity: ReturnType<typeof identityFromUser>) {
   }).eq("user_id", identity.user_id).eq("status", "pending");
   if (requestError) throw new HttpError("Could not finalize administrator setup.", 500);
 }
+async function getAdminRole(identity: ReturnType<typeof identityFromUser>): Promise<AdminRole> {
+  if (ADMIN_USER_IDS.has(identity.user_id.toLowerCase()) || (!!identity.telegram_id && ADMIN_TELEGRAM_IDS.has(identity.telegram_id))) return "master";
+  const { data: account, error: accountError } = await db!.from("gtrimmer_access_users").select("status, is_admin").eq("user_id", identity.user_id).maybeSingle();
+  if (accountError) throw new HttpError("Could not verify administrator role.", 500);
+  let miniUser: any = null;
+  if (identity.telegram_id && /^\d{1,20}$/.test(identity.telegram_id)) {
+    const { data, error } = await db!.from("gtrimmer_mini_access_users").select("status, is_admin").eq("telegram_id", identity.telegram_id).maybeSingle();
+    if (error) throw new HttpError("Could not verify Telegram administrator role.", 500);
+    miniUser = data;
+  }
+  if ((account?.status === "active" && account.is_admin) || (miniUser?.status === "active" && miniUser.is_admin)) return "master";
+  if (identity.telegram_id && (account?.status === "active" || miniUser?.status === "active")) {
+    const { data: moderator, error } = await db!.from("gtrimmer_moderator_roles").select("telegram_id").eq("telegram_id", identity.telegram_id).eq("is_active", true).maybeSingle();
+    if (error) throw new HttpError("Could not verify moderator permissions.", 500);
+    if (moderator) return "moderator";
+  }
+  return null;
+}
 async function getAccessState(identity: ReturnType<typeof identityFromUser>) {
   requireDatabase();
   await bootstrapAdmin(identity);
+  const role = await getAdminRole(identity);
   const { data: account, error: accountError } = await db!.from("gtrimmer_access_users")
     .select("user_id, telegram_id, username, display_name, status, is_admin, created_at, updated_at")
     .eq("user_id", identity.user_id).maybeSingle();
@@ -96,29 +117,73 @@ async function getAccessState(identity: ReturnType<typeof identityFromUser>) {
     }).eq("user_id", identity.user_id);
     if (error) throw new HttpError("Could not refresh the Telegram profile.", 500);
     return {
-      state: account.status === "active" ? (account.is_admin ? "admin" : "active") : "revoked",
-      user: {
-        user_id: account.user_id, telegram_id: identity.telegram_id, username: identity.username,
-        display_name: identity.display_name, is_admin: !!account.is_admin, status: account.status
-      }
+      state: account.status === "active" ? (role === "master" ? "admin" : "active") : "revoked",
+      role: role ?? "user",
+      user: { user_id: account.user_id, telegram_id: identity.telegram_id, username: identity.username,
+        display_name: identity.display_name, is_admin: role === "master", is_moderator: role === "moderator", status: account.status }
     };
   }
-  const { data: request, error: requestError } = await db!.from("gtrimmer_access_requests")
-    .select("status, requested_at").eq("user_id", identity.user_id).maybeSingle();
+  const { data: request, error: requestError } = await db!.from("gtrimmer_access_requests").select("status, requested_at").eq("user_id", identity.user_id).maybeSingle();
   if (requestError) throw new HttpError("Could not read request status: " + requestError.message, 500);
   return {
-    state: request?.status === "pending" ? "pending" : (request?.status === "rejected" ? "rejected" : "needs_request"),
+    state: role === "master" ? "admin" : (request?.status === "pending" ? "pending" : (request?.status === "rejected" ? "rejected" : "needs_request")),
+    role: role ?? "user",
     user: { user_id: identity.user_id, telegram_id: identity.telegram_id, username: identity.username,
-      display_name: identity.display_name, is_admin: false, status: request?.status ?? "not_requested" },
+      display_name: identity.display_name, is_admin: role === "master", is_moderator: role === "moderator",
+      status: request?.status ?? "not_requested" },
     requested_at: request?.requested_at ?? null
   };
 }
-async function requireAdmin(identity: ReturnType<typeof identityFromUser>) {
-  await bootstrapAdmin(identity);
-  const { data, error } = await db!.from("gtrimmer_access_users")
-    .select("user_id, is_admin, status").eq("user_id", identity.user_id).maybeSingle();
-  if (error) throw new HttpError("Could not verify administrator access.", 500);
-  if (!data || data.status !== "active" || !data.is_admin) throw new HttpError("Administrator access is required for this action.", 403);
+async function requireAdmin(identity: ReturnType<typeof identityFromUser>): Promise<Exclude<AdminRole, null>> {
+  const role = await getAdminRole(identity);
+  if (!role) throw new HttpError("Administrator access is required for this action.", 403);
+  return role;
+}
+async function loadPendingRequestsOnly() {
+  const [{ data: legacyRequests, error: legacyError }, { data: miniRequests, error: miniError }] = await Promise.all([
+    db!.from("gtrimmer_access_requests").select("user_id, telegram_id, username, display_name, status, requested_at").eq("status", "pending").order("requested_at", { ascending: true }).limit(200),
+    db!.from("gtrimmer_mini_access_requests").select("telegram_id, username, display_name, status, requested_at").eq("status", "pending").order("requested_at", { ascending: true }).limit(200)
+  ]);
+  if (legacyError || miniError) throw new HttpError("Could not load pending access requests.", 500);
+  const requests: any[] = (legacyRequests ?? []).map((row: any) => ({ ...row, source: "legacy" }));
+  const known = new Set(requests.map((row: any) => String(row.telegram_id ?? "")).filter(Boolean));
+  for (const row of miniRequests ?? []) if (!known.has(String(row.telegram_id))) {
+    requests.push({ ...row, user_id: "tg:" + row.telegram_id, source: "mini" }); known.add(String(row.telegram_id));
+  }
+  return { success: true, role: "moderator", requests, users: [], moderators: [] };
+}
+async function manageModerator(identity: ReturnType<typeof identityFromUser>, action: string, rawTelegramId: unknown) {
+  const telegramId = String(rawTelegramId ?? "").trim();
+  if (!/^\d{1,20}$/.test(telegramId)) throw new HttpError("Enter a valid Telegram user ID.");
+  if (ADMIN_TELEGRAM_IDS.has(telegramId)) throw new HttpError("Master Admin accounts cannot be assigned or removed as moderators.", 403);
+  if (action === "revoke-moderator") {
+    const { data, error } = await db!.from("gtrimmer_moderator_roles").update({ is_active: false, revoked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("telegram_id", telegramId).eq("is_active", true).select("telegram_id");
+    if (error) throw new HttpError("Could not remove moderator permission.", 500);
+    if (!data?.length) throw new HttpError("This account does not have active moderator permission.");
+    return { success: true, message: "Moderator permission removed." };
+  }
+  const [{ data: legacyRows, error: legacyError }, { data: miniRows, error: miniError }] = await Promise.all([
+    db!.from("gtrimmer_access_users").select("user_id, telegram_id, username, display_name, status, is_admin").eq("telegram_id", telegramId).limit(20),
+    db!.from("gtrimmer_mini_access_users").select("telegram_id, username, display_name, status, is_admin").eq("telegram_id", telegramId).limit(20)
+  ]);
+  if (legacyError || miniError) throw new HttpError("Could not verify the selected account.", 500);
+  const rows: any[] = [...(legacyRows ?? []), ...(miniRows ?? [])];
+  if (rows.some((row: any) => row.status === "active" && row.is_admin)) throw new HttpError("Master Admin accounts cannot be demoted or assigned moderator status.", 403);
+  const active = rows.find((row: any) => row.status === "active");
+  if (!active) throw new HttpError("Only an already-approved active account can become a moderator.");
+  const { data: existing, error: existingError } = await db!.from("gtrimmer_moderator_roles").select("telegram_id, is_active").eq("telegram_id", telegramId).maybeSingle();
+  if (existingError) throw new HttpError("Could not check current moderator status.", 500);
+  if (existing?.is_active) throw new HttpError("This account is already a moderator.");
+  const now = new Date().toISOString();
+  const { error } = await db!.from("gtrimmer_moderator_roles").upsert({
+    telegram_id: telegramId, username: active.username ?? null,
+    display_name: active.display_name ?? (active.username ? "@" + active.username : "Telegram user"),
+    is_active: true, granted_by_telegram_id: identity.telegram_id, granted_by_user_id: identity.user_id,
+    granted_at: now, revoked_at: null, updated_at: now
+  }, { onConflict: "telegram_id" });
+  if (error) throw new HttpError("Could not grant moderator permission.", 500);
+  return { success: true, message: "Moderator permission granted." };
 }
 
 async function notifyAccessApproved(telegramId: unknown, username: unknown, displayName: unknown): Promise<void> {
@@ -160,11 +225,14 @@ async function notifyAccessApproved(telegramId: unknown, username: unknown, disp
 
 async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: Record<string, unknown>) {
   requireDatabase();
-  await requireAdmin(identity);
+  const role = await requireAdmin(identity);
   const action = String(body.admin_action ?? "");
+  if (role === "moderator" && !["list", "approve", "reject"].includes(action)) throw new HttpError("Moderator Admins can only approve or reject pending access requests.", 403);
   if (action === "list") {
+    if (role === "moderator") return await loadPendingRequestsOnly();
     const [{ data: legacyRequests, error: requestError }, { data: legacyUsers, error: usersError },
-      { data: miniRequests, error: miniRequestError }, { data: miniUsers, error: miniUsersError }] = await Promise.all([
+      { data: miniRequests, error: miniRequestError }, { data: miniUsers, error: miniUsersError },
+      { data: moderatorRows, error: moderatorsError }] = await Promise.all([
       db!.from("gtrimmer_access_requests").select("user_id, telegram_id, username, display_name, status, requested_at")
         .eq("status", "pending").order("requested_at", { ascending: true }).limit(200),
       db!.from("gtrimmer_access_users").select("user_id, telegram_id, username, display_name, status, is_admin, created_at, updated_at")
@@ -172,9 +240,11 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
       db!.from("gtrimmer_mini_access_requests").select("telegram_id, username, display_name, status, requested_at")
         .eq("status", "pending").order("requested_at", { ascending: true }).limit(200),
       db!.from("gtrimmer_mini_access_users").select("telegram_id, username, display_name, status, is_admin, created_at, updated_at")
-        .order("updated_at", { ascending: false }).limit(200)
+        .order("updated_at", { ascending: false }).limit(200),
+      db!.from("gtrimmer_moderator_roles").select("telegram_id, username, display_name, granted_at, granted_by_telegram_id")
+        .eq("is_active", true).order("granted_at", { ascending: false }).limit(200)
     ]);
-    if (requestError || usersError || miniRequestError || miniUsersError) {
+    if (requestError || usersError || miniRequestError || miniUsersError || moderatorsError) {
       throw new HttpError("Could not load access lists. Confirm supabase/telegram-mini-app-schema.sql has been run.", 500);
     }
     const requests: any[] = (legacyRequests ?? []).map((row: any) => ({ ...row, source: "legacy" }));
@@ -193,7 +263,13 @@ async function handleAdmin(identity: ReturnType<typeof identityFromUser>, body: 
         userTelegramIds.add(String(row.telegram_id));
       }
     }
-    return { success: true, requests, users };
+    const moderatorIds = new Set((moderatorRows ?? []).map((row: any) => String(row.telegram_id)));
+    for (const user of users) user.is_moderator = moderatorIds.has(String(user.telegram_id ?? ""));
+    return { success: true, role: "master", requests, users, moderators: moderatorRows ?? [] };
+  }
+  if (action === "grant-moderator" || action === "revoke-moderator") {
+    if (role !== "master") throw new HttpError("Only the Master Admin can manage moderator roles.", 403);
+    return await manageModerator(identity, action, body.telegram_id);
   }
   if (action === "clear-revoked") {
     const [
