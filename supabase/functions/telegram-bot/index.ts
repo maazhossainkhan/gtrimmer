@@ -21,7 +21,7 @@ type BotLanguage = "en" | "bn";
 const WORDS: Record<BotLanguage, Record<string, string>> = {
  en: {
   open:"🚀 Open Google Trim", convert:"🔗 Convert Link", access:"🔐 My Access", request:"📩 Request Access", help:"ℹ️ Help", contact:"💬 Contact Support", donate:"💛 Donate", start:"▶️ Start / Main Menu", language:"🌐 Language", placeholder:"Paste a share.google link to convert…",
-  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nTap Menu beside the message box to open Start, Open Google Trim, Language, Help and other commands. You can also paste a share.google URL in this chat to convert it.",
+  welcome:"Welcome to Google Trim by Shadow, {name}!\n\nUse the buttons below to open Google Trim, change language, check access, or get help. Tap Open Google Trim, then tap the secure launch button in the next message. You can also paste a share.google URL in this chat to convert it.",
   langPrompt:"🌐 Choose your preferred language:", langDone:"✅ Language set to English.",
   openPrompt:"Open the Mini App using the button below.",
   contactText:"💬 Need help with Google Trim?\n\nMessage @maazhossainkhan and include a short description of the problem.",
@@ -38,7 +38,7 @@ const WORDS: Record<BotLanguage, Record<string, string>> = {
  },
  bn: {
   open:"🚀 Google Trim খুলুন", convert:"🔗 লিংক রূপান্তর", access:"🔐 আমার অ্যাক্সেস", request:"📩 অ্যাক্সেসের অনুরোধ", help:"ℹ️ সাহায্য", contact:"💬 সাপোর্টে যোগাযোগ", donate:"💛 ডোনেট", start:"▶️ শুরু / মূল মেনু", language:"🌐 ভাষা", placeholder:"রূপান্তরের জন্য share.google লিংক পাঠান…",
-  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nমেসেজ বক্সের পাশের Menu চাপলে Start, Google Trim, ভাষা, সাহায্যসহ command তালিকা খুলবে। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
+  welcome:"Shadow-এর Google Trim-এ স্বাগতম, {name}!\n\nনিচের বাটনগুলো দিয়ে Google Trim খুলুন, ভাষা পরিবর্তন করুন, অ্যাক্সেস দেখুন বা সাহায্য নিন। Open Google Trim চাপুন, তারপর পরের মেসেজের secure launch বাটনে চাপ দিন। Mini App না খুলেও এই চ্যাটে share.google URL পাঠিয়ে রূপান্তর করতে পারবেন।",
   langPrompt:"🌐 আপনার পছন্দের ভাষা নির্বাচন করুন:", langDone:"✅ ভাষা বাংলা করা হয়েছে।",
   openPrompt:"নিচের বাটনে চাপ দিয়ে Mini App খুলুন।",
   contactText:"💬 Google Trim নিয়ে সাহায্য প্রয়োজন?\n\nসমস্যার সংক্ষিপ্ত বিবরণ দিয়ে @maazhossainkhan-কে মেসেজ দিন।",
