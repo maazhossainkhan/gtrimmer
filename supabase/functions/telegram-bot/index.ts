@@ -113,7 +113,7 @@ function keyboard(lang: BotLanguage = "en") {
       [{ text: tr(lang, "contact") }, { text: tr(lang, "donate") }]
     ],
     resize_keyboard: true,
-    is_persistent: false,
+    is_persistent: true,
     one_time_keyboard: false,
     input_field_placeholder: tr(lang, "placeholder")
   };
@@ -131,9 +131,10 @@ async function sendMessage(chatId: number, text: string, extra: Record<string, u
     ...extra
   });
 
-  // Telegram allows only one markup type per message. If an inline copy button is
-  // attached to the result, re-apply the reply keyboard with an invisible character,
-  // then delete that helper message so no extra visible text is added.
+  // Telegram allows only one markup type per message. Keep a separate invisible
+  // helper message with the reply keyboard after inline-copy results. Do not delete
+  // it: deleting the last reply-keyboard message can remove the keyboard toggle in
+  // some clients. The helper contains no readable text.
   if (hasInlineKeyboard) {
     try {
       const helper = await telegramApi("sendMessage", {
@@ -142,10 +143,8 @@ async function sendMessage(chatId: number, text: string, extra: Record<string, u
         reply_markup: keyboard(lang),
         disable_web_page_preview: true
       });
-      const helperMessageId = helper?.message_id;
-      if (Number.isSafeInteger(helperMessageId)) {
-        await telegramApi("deleteMessage", { chat_id: chatId, message_id: helperMessageId });
-      }
+      // Intentionally keep this message. Its reply keyboard maintains the toggle.
+      void helper;
     } catch (error) {
       console.warn("Could not restore keyboard after inline message:", error instanceof Error ? error.message : "unknown error");
     }
