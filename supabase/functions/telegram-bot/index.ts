@@ -200,6 +200,44 @@ async function getAccessState(telegramId: string): Promise<AccessState> {
   if (request?.status === "rejected") return { state: "rejected", username: request.username };
   return { state: "needs_request", username: request?.username ?? null };
 }
+
+type BotLinkContext = { lang: BotLanguage; access: AccessState };
+async function getLinkContext(telegramId: string): Promise<BotLinkContext> {
+  try {
+    if (!db) throw new Error("Bot database access is not configured.");
+    const { data, error } = await db.rpc("gtrimmer_bot_link_context", {
+      p_telegram_id: telegramId
+    });
+    if (error) throw error;
+    if (!data || typeof data !== "object") throw new Error("Link context RPC returned no data.");
+
+    const lang: BotLanguage = data.language === "bn" ? "bn" : "en";
+    const validStates = new Set<AccessState["state"]>([
+      "admin", "active", "revoked", "pending", "rejected", "needs_request"
+    ]);
+    if (!validStates.has(data.access_state as AccessState["state"])) {
+      throw new Error("Link context RPC returned an invalid access state.");
+    }
+
+    languageCache.set(telegramId, { language: lang, expiresAt: Date.now() + LANGUAGE_CACHE_TTL_MS });
+    const state: AccessState["state"] = ADMIN_TELEGRAM_IDS.has(telegramId)
+      ? "admin"
+      : data.access_state as AccessState["state"];
+    const username = typeof data.username === "string" ? data.username : null;
+    return { lang, access: { state, username } };
+  } catch (error) {
+    // Compatibility fallback preserves the previous authorization path if the RPC
+    // is temporarily unavailable. The optimized path uses one database round-trip.
+    console.warn("Optimized link context lookup failed; using compatibility lookups:",
+      error instanceof Error ? error.message : "unknown error");
+    const [lang, access] = await Promise.all([
+      getLanguage(telegramId),
+      getAccessState(telegramId)
+    ]);
+    return { lang, access };
+  }
+}
+
 async function notifyAdminsOfRequest(telegramUser: TelegramUser) {
   // Notify active Mini App admins; failures do not undo a valid access request.
   const { data, error } = await db!.from("gtrimmer_mini_access_users")
@@ -212,7 +250,7 @@ async function notifyAdminsOfRequest(telegramUser: TelegramUser) {
   const telegramId = String(telegramUser.id);
   for (const admin of data ?? []) {
     const adminId = String(admin.telegram_id ?? "");
-    if (!/^\\d{1,20}$/.test(adminId) || adminId === telegramId) continue;
+    if (!/^[0-9]{1,20}$/.test(adminId) || adminId === telegramId) continue;
     try {
       await telegramApi("sendMessage", {
         chat_id: Number(adminId),
@@ -335,10 +373,7 @@ async function handleText(chatId: number, user: TelegramUser, messageText: strin
     if (candidate) {
       const conversionStartedAt = Date.now();
       const lookupStartedAt = Date.now();
-      const [lang, access] = await Promise.all([
-        getLanguage(String(user.id)),
-        getAccessState(String(user.id))
-      ]);
+      const { lang, access } = await getLinkContext(String(user.id));
       const lookupMs = Date.now() - lookupStartedAt;
       if (access.state !== "active" && access.state !== "admin") {
         const reason = access.state === "pending" ? tr(lang, "deniedPending") : access.state === "revoked" ? tr(lang, "deniedRevoked") : tr(lang, "denied");
