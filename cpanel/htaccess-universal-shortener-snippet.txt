@@ -1,0 +1,7 @@
+# Turlx Universal Shortener route
+# Add this rule AFTER "RewriteEngine On" and BEFORE any generic SPA/catch-all rewrite rule.
+# Do not replace your existing .htaccess file with this snippet.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^r/([A-Za-z0-9_-]{5,12})/?$ /index.html [END]
+</IfModule>
