@@ -9,6 +9,7 @@ converter, Telegram authentication, bot, or existing database tables.
 - `index.html` — only adds the isolated CSS and JS includes.
 - `css/universal-shortener.css` — new, namespaced styles.
 - `js/universal-shortener.js` — the new form and public short-link resolver.
+- `short-link-redirect.html` — lightweight public redirect page for `/r/CODE` routes.
 - `cpanel/htaccess-universal-shortener-snippet.txt` — append-only route rule.
 - `supabase/functions/universal-shortener/index.ts` — source snapshot of the active function.
 - `supabase/universal-shortener-schema.sql` — schema record for the existing isolated table/RPC.
@@ -18,8 +19,9 @@ converter, Telegram authentication, bot, or existing database tables.
 1. Upload the updated `index.html` to the existing document root.
 2. Upload `css/universal-shortener.css` into the existing `css` folder.
 3. Upload `js/universal-shortener.js` into the existing `js` folder.
-4. Open the current `.htaccess` file. Do not replace it. Add the route rule from the snippet after `RewriteEngine On` and before any catch-all/SPA rule.
-5. Test `https://turlx.com/` and then a generated `https://turlx.com/r/CODE` link.
+4. Upload `short-link-redirect.html` into the document root.
+5. Open the current `.htaccess` file. Do not replace it. Add the route rule from the snippet after `RewriteEngine On` and before any catch-all/SPA rule.
+6. Test `https://turlx.com/` and then a generated `https://turlx.com/r/CODE` link.
 
 ## Important
 
