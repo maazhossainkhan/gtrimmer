@@ -1,0 +1,81 @@
+/* Isolated styles for the Universal URL Shortener card and public redirect screen. */
+.universal-shortener-card {
+  width: min(100% - 32px, 920px);
+  margin: 30px auto 48px;
+  padding: clamp(20px, 4vw, 32px);
+  color: #edf1ff;
+  background:
+    radial-gradient(circle at 95% 0%, rgba(112, 91, 255, .12), transparent 38%),
+    linear-gradient(145deg, rgba(19, 24, 43, .98), rgba(11, 15, 29, .98));
+  border: 1px solid rgba(148, 163, 255, .16);
+  border-radius: 22px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .22);
+}
+.ush-header { display:flex; align-items:center; gap:15px; margin-bottom:23px; }
+.ush-icon {
+  display:grid; place-items:center; flex:0 0 48px; height:48px;
+  color:#dcd6ff; font-size:24px; border-radius:15px;
+  background:linear-gradient(145deg,rgba(124,102,255,.24),rgba(75,87,190,.13));
+  border:1px solid rgba(156,140,255,.25);
+}
+.ush-heading { min-width:0; flex:1; }
+.ush-eyebrow { color:#a99bff; font-size:10px; font-weight:800; letter-spacing:.16em; }
+.ush-title { margin:4px 0 3px; color:#f7f8ff; font-size:clamp(20px,3vw,25px); font-weight:750; letter-spacing:-.025em; }
+.ush-description { margin:0; color:#9ca7c2; font-size:13px; line-height:1.55; }
+.ush-pill { flex:0 0 auto; padding:7px 10px; color:#b9c3e3; font-size:11px; font-weight:700; border:1px solid rgba(148,163,184,.17); border-radius:999px; background:rgba(255,255,255,.035); }
+.ush-label { display:block; margin:0 0 9px; color:#c8d0e5; font-size:12px; font-weight:700; }
+.ush-form-row { display:flex; gap:10px; }
+.ush-input {
+  display:block; width:100%; min-width:0; height:50px; padding:0 15px;
+  color:#f6f7ff; font:inherit; font-size:13px;
+  background:rgba(4,8,20,.62); border:1px solid rgba(148,163,184,.2);
+  border-radius:12px; outline:none; transition:border-color .18s,box-shadow .18s;
+}
+.ush-input::placeholder { color:#626e8c; }
+.ush-input:focus { border-color:rgba(145,126,255,.8); box-shadow:0 0 0 3px rgba(124,102,255,.13); }
+.ush-submit {
+  display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; gap:9px;
+  min-width:150px; height:50px; padding:0 18px; color:#fff;
+  font-size:13px; font-weight:750; border:0; border-radius:12px;
+  background:linear-gradient(110deg,#7257f5,#8b5cf6); cursor:pointer;
+  box-shadow:0 9px 24px rgba(112,87,245,.21); transition:filter .18s,transform .18s,opacity .18s;
+}
+.ush-submit:hover { filter:brightness(1.1); transform:translateY(-1px); }
+.ush-submit:disabled { cursor:wait; opacity:.62; transform:none; }
+.ush-error { margin:11px 0 0; color:#ff9cae; font-size:12px; line-height:1.5; }
+.ush-result {
+  margin-top:17px; padding:15px; border:1px solid rgba(52,211,153,.22);
+  border-radius:14px; background:rgba(16,185,129,.065);
+}
+.ush-result-label { margin:0 0 8px; color:#9bdcc4; font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+.ush-result-row { display:flex; align-items:center; gap:10px; min-width:0; }
+.ush-result-link { min-width:0; flex:1; overflow:hidden; color:#a7f3d0; font:600 13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; text-overflow:ellipsis; white-space:nowrap; }
+.ush-copy {
+  flex:0 0 auto; min-height:36px; padding:0 13px; color:#bff7df;
+  font-size:12px; font-weight:750; border:1px solid rgba(52,211,153,.2);
+  border-radius:9px; background:rgba(16,185,129,.13); cursor:pointer;
+}
+.ush-copy:hover { background:rgba(16,185,129,.22); }
+.ush-feedback { min-height:16px; margin:8px 0 0; color:#9bdcc4; font-size:11px; }
+.ush-note { margin:14px 0 0; color:#77839f; font-size:11px; line-height:1.55; }
+.ush-redirect-screen {
+  position:fixed; z-index:2147483000; inset:0; display:grid; place-items:center;
+  padding:24px; color:#edf1ff; background:#090b14;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.ush-redirect-panel { width:min(100%,420px); padding:30px 24px; text-align:center; border:1px solid rgba(148,163,255,.17); border-radius:22px; background:#11172a; box-shadow:0 24px 80px rgba(0,0,0,.4); }
+.ush-redirect-symbol { display:grid; place-items:center; width:54px; height:54px; margin:0 auto 17px; color:#d8d1ff; font-size:25px; border-radius:17px; background:rgba(124,102,255,.16); }
+.ush-redirect-title { margin:0; color:#f7f8ff; font-size:20px; font-weight:750; }
+.ush-redirect-message { margin:9px 0 0; color:#9ca7c2; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.ush-redirect-home { display:inline-block; margin-top:19px; color:#b9adff; font-size:12px; font-weight:700; text-decoration:none; }
+.ush-redirect-home:hover { text-decoration:underline; }
+@media (max-width:620px) {
+  .universal-shortener-card { width:calc(100% - 24px); margin:20px auto 32px; border-radius:18px; }
+  .ush-header { align-items:flex-start; }
+  .ush-pill { display:none; }
+  .ush-form-row { flex-direction:column; }
+  .ush-submit { width:100%; }
+  .ush-result-row { align-items:stretch; flex-direction:column; }
+  .ush-copy { width:100%; }
+  .ush-result-link { width:100%; }
+}
